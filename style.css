@@ -1,0 +1,331 @@
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: Arial, "Noto Sans Devanagari", sans-serif;
+  background: #f4f7fb;
+  color: #172b46;
+  line-height: 1.6;
+}
+
+.topbar {
+  background: #102544;
+  color: white;
+  padding: 15px 6%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 21px;
+  font-weight: bold;
+}
+
+.brand small {
+  display: block;
+  font-size: 12px;
+  font-weight: normal;
+  color: #d5deeb;
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #dba83d;
+  color: #102544;
+  display: grid;
+  place-items: center;
+  font-weight: bold;
+}
+
+.btn {
+  display: inline-block;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 19px;
+  font-size: 15px;
+  font-weight: bold;
+  text-decoration: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn-light {
+  background: white;
+  color: #102544;
+}
+
+.btn-gold {
+  background: #e0ad43;
+  color: #102544;
+  margin-top: 12px;
+}
+
+.btn-primary {
+  background: #102544;
+  color: white;
+  margin-top: 8px;
+}
+
+.nav {
+  background: #18385f;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.nav a {
+  color: white;
+  text-decoration: none;
+  padding: 9px 13px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.nav a:hover {
+  background: #31577f;
+}
+
+.hero {
+  background: linear-gradient(120deg, #102544, #24517b);
+  color: white;
+  text-align: center;
+  padding: 85px 20px;
+}
+
+.hero .eyebrow {
+  color: #e5bb63;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.hero h1 {
+  font-size: clamp(30px, 5vw, 48px);
+  line-height: 1.35;
+  margin-bottom: 15px;
+}
+
+.hero p {
+  color: #e0e8f2;
+  font-size: 16px;
+}
+
+.section {
+  max-width: 1100px;
+  margin: auto;
+  padding: 45px 20px;
+}
+
+.section h2 {
+  font-size: 25px;
+  color: #102544;
+  margin-bottom: 22px;
+  border-left: 5px solid #dba83d;
+  padding-left: 12px;
+}
+
+.panel {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(16, 37, 68, 0.08);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccd5e0;
+  border-radius: 7px;
+  font-size: 15px;
+  font-family: inherit;
+  background: white;
+  color: #172b46;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #24517b;
+  box-shadow: 0 0 0 2px rgba(36, 81, 123, 0.12);
+}
+
+textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+#complaint-form,
+#suggestion-form {
+  display: grid;
+  gap: 16px;
+}
+
+.link-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+}
+
+.link-grid a {
+  background: white;
+  padding: 18px;
+  border-radius: 9px;
+  color: #18385f;
+  text-decoration: none;
+  font-weight: bold;
+  border: 1px solid #e0e6ed;
+  transition: 0.2s;
+}
+
+.link-grid a:hover {
+  background: #eaf1f8;
+  border-color: #24517b;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.team-card {
+  background: white;
+  text-align: center;
+  padding: 24px 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(16, 37, 68, 0.07);
+  overflow-wrap: anywhere;
+}
+
+.avatar {
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  background: #18385f;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 27px;
+  margin: 0 auto 12px;
+}
+
+.team-card h3 {
+  margin-bottom: 8px;
+  color: #102544;
+}
+
+.team-card a {
+  color: #24517b;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.team-card p {
+  margin-top: 7px;
+}
+
+footer {
+  background: #102544;
+  color: white;
+  text-align: center;
+  padding: 25px 15px;
+  font-size: 14px;
+}
+
+/* Mobile Responsive Design */
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 12px 4%;
+  }
+
+  .brand {
+    font-size: 17px;
+  }
+
+  .brand-mark {
+    width: 42px;
+    height: 42px;
+  }
+
+  .btn-light {
+    padding: 9px 11px;
+    font-size: 12px;
+  }
+
+  .nav {
+    justify-content: flex-start;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .nav a {
+    white-space: nowrap;
+  }
+
+  .hero {
+    padding: 65px 18px;
+  }
+
+  .section {
+    padding: 32px 15px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .link-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 380px) {
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}
