@@ -31,6 +31,7 @@
   <a href="#notices">नोटिस बोर्ड</a>
   <a href="#profile">विद्यार्थी प्रोफाइल</a>
   <a href="#complaints">शिकायत</a>
+  <a href="#complaint-status">शिकायत स्टेटस</a>
   <a href="#suggestions">सुझाव</a>
   <a href="#links">महत्वपूर्ण लिंक</a>
   <a href="#team">टीम RKG</a>
@@ -76,64 +77,40 @@
 
       <label>
         विद्यार्थी का नाम
-        <input
-          type="text"
-          name="name"
-          placeholder="अपना पूरा नाम लिखें"
-          required
-        >
+        <input type="text" name="name"
+          placeholder="अपना पूरा नाम लिखें" required>
       </label>
 
       <label>
         ईमेल आईडी
-        <input
-          type="email"
-          name="email"
-          placeholder="अपनी ईमेल आईडी"
-          readonly
-        >
+        <input type="email" name="email"
+          placeholder="अपनी ईमेल आईडी" readonly>
       </label>
 
       <label>
         मोबाइल नंबर
-        <input
-          type="tel"
-          name="phone"
+        <input type="tel" name="phone"
           placeholder="10 अंकों का मोबाइल नंबर"
           maxlength="10"
           pattern="[6-9][0-9]{9}"
-          inputmode="numeric"
-          required
-        >
+          inputmode="numeric" required>
       </label>
 
       <label>
         गाँव
-        <input
-          type="text"
-          name="village"
-          placeholder="अपने गाँव का नाम"
-          required
-        >
+        <input type="text" name="village"
+          placeholder="अपने गाँव का नाम" required>
       </label>
 
       <label>
         तहसील
-        <input
-          type="text"
-          name="tehsil"
-          placeholder="अपनी तहसील"
-          required
-        >
+        <input type="text" name="tehsil"
+          placeholder="अपनी तहसील" required>
       </label>
 
       <label>
         जिला
-        <input
-          type="text"
-          name="district"
-          value="बीकानेर"
-        >
+        <input type="text" name="district" value="बीकानेर">
       </label>
 
       <label>
@@ -197,12 +174,8 @@
 
       <label>
         शिकायत का विषय
-        <input
-          type="text"
-          name="subject"
-          placeholder="शिकायत का विषय लिखें"
-          required
-        >
+        <input type="text" name="subject"
+          placeholder="शिकायत का विषय लिखें" required>
       </label>
 
       <label>
@@ -218,16 +191,50 @@
 
       <label>
         शिकायत का विवरण
-        <textarea
-          name="details"
+        <textarea name="details"
           placeholder="अपनी समस्या विस्तार से लिखें"
-          required
-        ></textarea>
+          required></textarea>
       </label>
 
       <button class="btn btn-primary" type="submit">
         शिकायत भेजें
       </button>
+
+      <div id="complaint-token-result" aria-live="polite">
+      </div>
+
+    </form>
+  </section>
+
+  <!-- COMPLAINT STATUS -->
+  <section id="complaint-status" class="section">
+    <h2>शिकायत स्टेटस – TEAM RKG</h2>
+
+    <p>
+      शिकायत दर्ज होने पर मिले RKG टोकन नंबर से
+      अपनी शिकायत की स्थिति देखें।
+    </p>
+
+    <form id="complaint-status-form" class="panel">
+
+      <label>
+        RKG शिकायत टोकन नंबर
+        <input
+          type="text"
+          id="complaint-id"
+          name="complaintId"
+          placeholder="RKG-2026-0001"
+          required
+        >
+      </label>
+
+      <button class="btn btn-primary" type="submit">
+        शिकायत का स्टेटस देखें
+      </button>
+
+      <div id="complaint-status-result" aria-live="polite">
+        <p>आपकी शिकायत की स्थिति यहाँ दिखाई देगी।</p>
+      </div>
 
     </form>
   </section>
@@ -240,11 +247,9 @@
 
       <label>
         अपना सुझाव लिखें
-        <textarea
-          name="suggestion"
+        <textarea name="suggestion"
           placeholder="कॉलेज और विद्यार्थियों के लिए अपना सुझाव लिखें"
-          required
-        ></textarea>
+          required></textarea>
       </label>
 
       <button class="btn btn-primary" type="submit">
@@ -254,26 +259,89 @@
     </form>
   </section>
 
+  <!-- ADMIN PANEL -->
+  <section id="admin-panel" class="section" hidden>
+    <h2>TEAM RKG – Admin Panel</h2>
+
+    <p>यह पैनल केवल अधिकृत एडमिन के लिए है।</p>
+
+    <!-- COMPLAINT MANAGEMENT -->
+    <div class="panel">
+      <h3>शिकायत प्रबंधन</h3>
+
+      <button
+        id="admin-load-complaints"
+        class="btn btn-primary"
+        type="button">
+        सभी शिकायतें देखें
+      </button>
+
+      <div id="admin-complaint-list">
+        <p>शिकायतों की सूची यहाँ दिखाई देगी।</p>
+      </div>
+    </div>
+
+    <!-- NOTICE MANAGEMENT -->
+    <div class="panel">
+      <h3>नोटिस प्रबंधन</h3>
+
+      <form id="admin-notice-form">
+
+        <label>
+          नोटिस का शीर्षक
+          <input type="text" name="title"
+            placeholder="नोटिस का शीर्षक" required>
+        </label>
+
+        <label>
+          नोटिस का विवरण
+          <textarea name="description"
+            placeholder="नोटिस की जानकारी" required></textarea>
+        </label>
+
+        <label>
+          PDF या नोटिस लिंक
+          <input type="url" name="link"
+            placeholder="https://...">
+        </label>
+
+        <button class="btn btn-primary" type="submit">
+          नोटिस प्रकाशित करें
+        </button>
+
+      </form>
+
+      <div id="admin-notice-message" aria-live="polite"></div>
+    </div>
+
+  </section>
+
   <!-- IMPORTANT LINKS -->
   <section id="links" class="section">
     <h2>महत्वपूर्ण लिंक</h2>
 
     <div class="link-grid">
-      <a href="https://mgsubikaner.ac.in/" target="_blank" rel="noopener">
+
+      <a href="https://mgsubikaner.ac.in/"
+        target="_blank" rel="noopener">
         MGSU विश्वविद्यालय
       </a>
 
-      <a href="https://www.dungarcollege.ac.in/" target="_blank" rel="noopener">
+      <a href="https://www.dungarcollege.ac.in/"
+        target="_blank" rel="noopener">
         डूंगर कॉलेज
       </a>
 
-      <a href="https://hte.rajasthan.gov.in/" target="_blank" rel="noopener">
+      <a href="https://hte.rajasthan.gov.in/"
+        target="_blank" rel="noopener">
         राजस्थान उच्च शिक्षा
       </a>
 
-      <a href="https://scholarship.rajasthan.gov.in/" target="_blank" rel="noopener">
+      <a href="https://scholarship.rajasthan.gov.in/"
+        target="_blank" rel="noopener">
         छात्रवृत्ति पोर्टल
       </a>
+
     </div>
   </section>
 
@@ -286,7 +354,8 @@
       <article class="team-card">
         <div class="avatar">र</div>
         <h3>राकेश गोदारा</h3>
-        <a href="https://instagram.com/rakesh_godara_rkg" target="_blank" rel="noopener">
+        <a href="https://instagram.com/rakesh_godara_rkg"
+          target="_blank" rel="noopener">
           @rakesh_godara_rkg
         </a>
         <p>9602705184</p>
@@ -295,7 +364,8 @@
       <article class="team-card">
         <div class="avatar">भ</div>
         <h3>भागीरथ गोदारा</h3>
-        <a href="https://instagram.com/Bhagirath_godara_dcb" target="_blank" rel="noopener">
+        <a href="https://instagram.com/Bhagirath_godara_dcb"
+          target="_blank" rel="noopener">
           @Bhagirath_godara_dcb
         </a>
         <p>6377523140</p>
@@ -304,7 +374,8 @@
       <article class="team-card">
         <div class="avatar">वि</div>
         <h3>विरेंद्र बलायच</h3>
-        <a href="https://instagram.com/Virendra_balaych100" target="_blank" rel="noopener">
+        <a href="https://instagram.com/Virendra_balaych100"
+          target="_blank" rel="noopener">
           @Virendra_balaych100
         </a>
       </article>
@@ -312,7 +383,8 @@
       <article class="team-card">
         <div class="avatar">स</div>
         <h3>सौरभ बिश्नोई</h3>
-        <a href="https://instagram.com/Sourabh_bishnoi_57" target="_blank" rel="noopener">
+        <a href="https://instagram.com/Sourabh_bishnoi_57"
+          target="_blank" rel="noopener">
           @Sourabh_bishnoi_57
         </a>
       </article>
