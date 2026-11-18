@@ -13,6 +13,8 @@ import {
   doc,
   getDoc,
   setDoc,
+  addDoc,
+  deleteDoc,
   collection,
   serverTimestamp,
   getDocs,
@@ -33,14 +35,64 @@ const statusResult = document.getElementById("complaint-status-result");
 const tokenResult = document.getElementById("complaint-token-result");
 
 const noticeList = document.getElementById("notice-list");
+
 const adminPanel = document.getElementById("admin-panel");
 const adminNoticeForm = document.getElementById("admin-notice-form");
 const adminNoticeMessage = document.getElementById("admin-notice-message");
 const adminLoadComplaints = document.getElementById("admin-load-complaints");
 const adminComplaintList = document.getElementById("admin-complaint-list");
 
+const adminStudentList = document.getElementById("admin-student-list");
+const adminSuggestionList = document.getElementById("admin-suggestion-list");
+
 let currentUser = null;
 let isAdmin = false;
+
+// COMMON HELPERS
+function getFormData(form) {
+  const data = {};
+
+  new FormData(form).forEach((value, key) => {
+    if (typeof value === "string") {
+      data[key] = value.trim();
+    }
+  });
+
+  return data;
+}
+
+function makeElement(tag, text, className = "") {
+  const element = document.createElement(tag);
+  element.textContent = text;
+
+  if (className) {
+    element.className = className;
+  }
+
+  return element;
+}
+
+function showMessage(element, message) {
+  if (element) {
+    element.textContent = message;
+  }
+}
+
+function createAdminButton(text, className, callback) {
+  const button = makeElement("button", text, className);
+  button.type = "button";
+  button.addEventListener("click", callback);
+  return button;
+}
+
+function requireAdmin() {
+  if (!currentUser || !isAdmin) {
+    alert("केवल अधिकृत एडमिन यह काम कर सकते हैं।");
+    return false;
+  }
+
+  return true;
+}
 
 // LOGIN WINDOW
 const loginBox = document.createElement("div");
@@ -107,38 +159,10 @@ const accountEmail = document.getElementById("account-email");
 const accountPassword = document.getElementById("account-password");
 const accountMessage = document.getElementById("account-message");
 
-// COMMON HELPERS
-function getFormData(form) {
-  const data = {};
-
-  new FormData(form).forEach((value, key) => {
-    if (typeof value === "string") {
-      data[key] = value.trim();
-    }
-  });
-
-  return data;
-}
-
-function makeElement(tag, text, className = "") {
-  const element = document.createElement(tag);
-  element.textContent = text;
-
-  if (className) {
-    element.className = className;
-  }
-
-  return element;
-}
-
-function showMessage(element, message) {
-  if (element) {
-    element.textContent = message;
-  }
-}
-
 // PROFILE
 function fillProfileForm(student) {
+  if (!profileForm) return;
+
   Object.keys(student).forEach((key) => {
     const field = profileForm.elements.namedItem(key);
 
@@ -153,6 +177,8 @@ function fillProfileForm(student) {
 }
 
 async function loadProfile(user) {
+  if (!profileForm) return;
+
   try {
     const profileRef = doc(db, "profiles", user.uid);
     const profileSnap = await getDoc(profileRef);
@@ -166,7 +192,6 @@ async function loadProfile(user) {
     if (emailField) {
       emailField.value = user.email || "";
     }
-
   } catch (error) {
     console.error("प्रोफाइल त्रुटि:", error);
     alert("प्रोफाइल लोड नहीं हो सकी।");
@@ -174,19 +199,21 @@ async function loadProfile(user) {
 }
 
 // LOGIN BUTTON
-loginButton.addEventListener("click", () => {
-  if (currentUser) {
-    if (confirm("क्या आप लॉगआउट करना चाहते हैं?")) {
-      signOut(auth).catch((error) => {
-        alert("लॉगआउट नहीं हुआ: " + error.message);
-      });
+if (loginButton) {
+  loginButton.addEventListener("click", () => {
+    if (currentUser) {
+      if (confirm("क्या आप लॉगआउट करना चाहते हैं?")) {
+        signOut(auth).catch((error) => {
+          alert("लॉगआउट नहीं हुआ: " + error.message);
+        });
+      }
+      return;
     }
-    return;
-  }
 
-  loginBox.style.display = "flex";
-  accountMessage.textContent = "";
-});
+    loginBox.style.display = "flex";
+    accountMessage.textContent = "";
+  });
+}
 
 document.getElementById("account-close").addEventListener("click", () => {
   loginBox.style.display = "none";
@@ -219,10 +246,8 @@ document.getElementById("account-register").addEventListener("click", async () =
 
     loginBox.style.display = "none";
     alert("अकाउंट बन गया है। अब प्रोफाइल भरें।");
-
   } catch (error) {
-    accountMessage.textContent =
-      "अकाउंट नहीं बना: " + error.message;
+    accountMessage.textContent = "अकाउंट नहीं बना: " + error.message;
   }
 });
 
@@ -237,12 +262,255 @@ document.getElementById("account-login").addEventListener("click", async () => {
 
     loginBox.style.display = "none";
     alert("लॉगिन सफल हुआ।");
-
   } catch (error) {
-    accountMessage.textContent =
-      "लॉगिन नहीं हुआ: " + error.message;
+    accountMessage.textContent = "लॉगिन नहीं हुआ: " + error.message;
   }
 });
+
+// ADMIN NOTICE LIST ELEMENT
+let adminNoticeList = document.getElementById("admin-notice-list");
+
+if (!adminNoticeList && adminNoticeForm) {
+  adminNoticeList = document.createElement("div");
+  adminNoticeList.id = "admin-notice-list";
+  adminNoticeList.className = "admin-list";
+  adminNoticeForm.insertAdjacentElement("afterend", adminNoticeList);
+}
+
+// ADMIN DASHBOARD METRICS
+function setMetric(id, value) {
+  const element = document.getElementById(id);
+
+  if (element) {
+    element.textContent = String(value);
+  }
+}
+
+async function loadAdminDashboard() {
+  if (!requireAdmin()) return;
+
+  try {
+    const [
+      studentsSnap,
+      complaintsSnap,
+      noticesSnap,
+      suggestionsSnap
+    ] = await Promise.all([
+      getDocs(collection(db, "profiles")),
+      getDocs(collection(db, "complaints")),
+      getDocs(collection(db, "notices")),
+      getDocs(collection(db, "suggestions"))
+    ]);
+
+    const pendingCount = complaintsSnap.docs.filter((item) => {
+      return (item.data().status || "Pending") === "Pending";
+    }).length;
+
+    setMetric("admin-total-students", studentsSnap.size);
+    setMetric("admin-total-complaints", complaintsSnap.size);
+    setMetric("admin-pending-complaints", pendingCount);
+    setMetric("admin-total-notices", noticesSnap.size);
+    setMetric("admin-total-suggestions", suggestionsSnap.size);
+
+  } catch (error) {
+    console.error("डैशबोर्ड त्रुटि:", error);
+    alert("डैशबोर्ड का डेटा लोड नहीं हुआ: " + error.message);
+  }
+}
+
+// ADMIN STUDENTS
+async function loadAdminStudents() {
+  if (!requireAdmin() || !adminStudentList) return;
+
+  adminStudentList.textContent = "विद्यार्थियों की सूची लोड हो रही है...";
+
+  try {
+    const snapshot = await getDocs(collection(db, "profiles"));
+
+    adminStudentList.replaceChildren();
+
+    if (snapshot.empty) {
+      adminStudentList.textContent = "अभी कोई विद्यार्थी पंजीकृत नहीं है।";
+      return;
+    }
+
+    snapshot.docs.forEach((item) => {
+      const student = item.data();
+
+      const card = document.createElement("article");
+      card.className = "panel";
+
+      card.append(
+        makeElement("h3", student.name || "विद्यार्थी"),
+        makeElement("p", "ईमेल: " + (student.email || "")),
+        makeElement("p", "मोबाइल: " + (student.phone || "")),
+        makeElement("p", "गाँव: " + (student.village || "")),
+        makeElement("p", "तहसील: " + (student.tehsil || "")),
+        makeElement("p", "कोर्स: " + (student.course || "")),
+        makeElement("p", "सेमेस्टर: " + (student.semester || ""))
+      );
+
+      adminStudentList.append(card);
+    });
+
+  } catch (error) {
+    console.error(error);
+    adminStudentList.textContent =
+      "विद्यार्थियों की सूची नहीं खुली: " + error.message;
+  }
+}
+
+// ADMIN SUGGESTIONS
+async function loadAdminSuggestions() {
+  if (!requireAdmin() || !adminSuggestionList) return;
+
+  adminSuggestionList.textContent = "सुझाव लोड हो रहे हैं...";
+
+  try {
+    const snapshot = await getDocs(collection(db, "suggestions"));
+
+    adminSuggestionList.replaceChildren();
+
+    if (snapshot.empty) {
+      adminSuggestionList.textContent = "अभी कोई सुझाव नहीं आया है।";
+      return;
+    }
+
+    snapshot.docs.forEach((item) => {
+      const suggestion = item.data();
+
+      const card = document.createElement("article");
+      card.className = "panel";
+
+      card.append(
+        makeElement("h3", suggestion.subject || "विद्यार्थी सुझाव"),
+        makeElement("p", suggestion.message || suggestion.suggestion || ""),
+        makeElement("p", "ईमेल: " + (suggestion.email || ""))
+      );
+
+      adminSuggestionList.append(card);
+    });
+
+  } catch (error) {
+    console.error(error);
+    adminSuggestionList.textContent =
+      "सुझाव लोड नहीं हुए: " + error.message;
+  }
+}
+
+// ADMIN NOTICE MANAGEMENT
+async function loadAdminNotices() {
+  if (!requireAdmin() || !adminNoticeList) return;
+
+  adminNoticeList.textContent = "नोटिस लोड हो रहे हैं...";
+
+  try {
+    const snapshot = await getDocs(collection(db, "notices"));
+
+    adminNoticeList.replaceChildren();
+
+    if (snapshot.empty) {
+      adminNoticeList.textContent = "अभी कोई नोटिस प्रकाशित नहीं हुआ है।";
+      return;
+    }
+
+    snapshot.docs.forEach((item) => {
+      const notice = item.data();
+
+      const card = document.createElement("article");
+      card.className = "panel";
+
+      card.append(
+        makeElement("h3", notice.title || "नोटिस"),
+        makeElement("p", notice.description || ""),
+        makeElement("p", notice.link || "")
+      );
+
+      const editButton = createAdminButton(
+        "संपादित करें",
+        "btn btn-primary",
+        async () => {
+          if (!requireAdmin()) return;
+
+          const newTitle = prompt("नोटिस का नया शीर्षक:", notice.title || "");
+          if (newTitle === null) return;
+
+          const newDescription = prompt(
+            "नोटिस का नया विवरण:",
+            notice.description || ""
+          );
+          if (newDescription === null) return;
+
+          const newLink = prompt(
+            "PDF या वेबसाइट लिंक:",
+            notice.link || ""
+          );
+          if (newLink === null) return;
+
+          try {
+            let safeLink = newLink.trim();
+
+            if (safeLink) {
+              const url = new URL(safeLink);
+
+              if (
+                url.protocol !== "https:" &&
+                url.protocol !== "http:"
+              ) {
+                throw new Error("सही वेबसाइट या PDF लिंक डालें।");
+              }
+
+              safeLink = url.href;
+            }
+
+            await updateDoc(doc(db, "notices", item.id), {
+              title: newTitle.trim(),
+              description: newDescription.trim(),
+              link: safeLink,
+              updatedAt: serverTimestamp()
+            });
+
+            alert("नोटिस अपडेट हो गया।");
+            await loadAdminNotices();
+            await loadAdminDashboard();
+
+          } catch (error) {
+            alert("नोटिस अपडेट नहीं हुआ: " + error.message);
+          }
+        }
+      );
+
+      const deleteButton = createAdminButton(
+        "नोटिस हटाएँ",
+        "btn btn-light",
+        async () => {
+          if (!requireAdmin()) return;
+
+          if (!confirm("क्या आप यह नोटिस हटाना चाहते हैं?")) return;
+
+          try {
+            await deleteDoc(doc(db, "notices", item.id));
+
+            alert("नोटिस हटा दिया गया।");
+            await loadAdminNotices();
+            await loadAdminDashboard();
+
+          } catch (error) {
+            alert("नोटिस नहीं हटा: " + error.message);
+          }
+        }
+      );
+
+      card.append(editButton, deleteButton);
+      adminNoticeList.append(card);
+    });
+
+  } catch (error) {
+    console.error(error);
+    adminNoticeList.textContent =
+      "नोटिस लोड नहीं हुए: " + error.message;
+  }
+}
 
 // AUTH STATE AND ADMIN CHECK
 onAuthStateChanged(auth, async (user) => {
@@ -254,7 +522,9 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   if (user) {
-    loginButton.textContent = "लॉगिन सफल / लॉगआउट";
+    if (loginButton) {
+      loginButton.textContent = "लॉगिन सफल / लॉगआउट";
+    }
 
     try {
       const tokenResult = await getIdTokenResult(user, true);
@@ -265,6 +535,11 @@ onAuthStateChanged(auth, async (user) => {
 
       if (isAdmin && adminPanel) {
         adminPanel.hidden = false;
+
+        await loadAdminDashboard();
+        await loadAdminStudents();
+        await loadAdminSuggestions();
+        await loadAdminNotices();
       }
 
     } catch (error) {
@@ -272,87 +547,100 @@ onAuthStateChanged(auth, async (user) => {
     }
 
   } else {
-    loginButton.textContent = "विद्यार्थी लॉगिन";
+    if (loginButton) {
+      loginButton.textContent = "विद्यार्थी लॉगिन";
+    }
 
-    profileForm.reset();
+    if (profileForm) {
+      profileForm.reset();
+    }
 
     if (adminComplaintList) {
       adminComplaintList.textContent = "एडमिन लॉगिन जरूरी है।";
+    }
+
+    if (adminStudentList) {
+      adminStudentList.textContent = "एडमिन लॉगिन जरूरी है।";
+    }
+
+    if (adminSuggestionList) {
+      adminSuggestionList.textContent = "एडमिन लॉगिन जरूरी है।";
     }
   }
 });
 
 // SAVE PROFILE
-profileForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (profileForm) {
+  profileForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  if (!currentUser) {
-    alert("पहले लॉगिन करें।");
-    return;
-  }
+    if (!currentUser) {
+      alert("पहले लॉगिन करें।");
+      return;
+    }
 
-  try {
-    const student = {
-      ...getFormData(profileForm),
-      uid: currentUser.uid,
-      email: currentUser.email || "",
-      updatedAt: serverTimestamp()
-    };
+    try {
+      const student = {
+        ...getFormData(profileForm),
+        uid: currentUser.uid,
+        email: currentUser.email || "",
+        updatedAt: serverTimestamp()
+      };
 
-    await setDoc(
-      doc(db, "profiles", currentUser.uid),
-      student,
-      { merge: true }
-    );
+      await setDoc(
+        doc(db, "profiles", currentUser.uid),
+        student,
+        { merge: true }
+      );
 
-    alert("आपकी प्रोफाइल सेव हो गई।");
+      alert("आपकी प्रोफाइल सेव हो गई।");
 
-  } catch (error) {
-    alert("प्रोफाइल सेव नहीं हुई: " + error.message);
-  }
-});
+    } catch (error) {
+      alert("प्रोफाइल सेव नहीं हुई: " + error.message);
+    }
+  });
+}
 
 // COMPLAINT SUBMISSION
-complaintForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (complaintForm) {
+  complaintForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  if (!currentUser) {
-    alert("शिकायत के लिए पहले लॉगिन करें।");
-    return;
-  }
+    if (!currentUser) {
+      alert("शिकायत के लिए पहले लॉगिन करें।");
+      return;
+    }
 
-  try {
-    const complaintRef = doc(collection(db, "complaints"));
-    const token = "RKG-2026-" + complaintRef.id.toUpperCase();
+    try {
+      const complaintRef = doc(collection(db, "complaints"));
+      const token = "RKG-2026-" + complaintRef.id.toUpperCase();
 
-    const complaint = {
-      ...getFormData(complaintForm),
-      uid: currentUser.uid,
-      email: currentUser.email || "",
-      token,
-      status: "Pending",
-      reply: "",
-      createdAt: serverTimestamp()
-    };
+      const complaint = {
+        ...getFormData(complaintForm),
+        uid: currentUser.uid,
+        email: currentUser.email || "",
+        token,
+        status: "Pending",
+        reply: "",
+        createdAt: serverTimestamp()
+      };
 
-    await setDoc(complaintRef, complaint);
+      await setDoc(complaintRef, complaint);
 
-    showMessage(
-      tokenResult,
-      "आपका शिकायत टोकन: " + token
-    );
+      showMessage(tokenResult, "आपका शिकायत टोकन: " + token);
 
-    alert(
-      "शिकायत दर्ज हो गई। अपना टोकन सुरक्षित रखें:\n" + token
-    );
+      alert(
+        "शिकायत दर्ज हो गई। अपना टोकन सुरक्षित रखें:\n" + token
+      );
 
-    complaintForm.reset();
+      complaintForm.reset();
 
-  } catch (error) {
-    console.error(error);
-    alert("शिकायत दर्ज नहीं हुई: " + error.message);
-  }
-});
+    } catch (error) {
+      console.error(error);
+      alert("शिकायत दर्ज नहीं हुई: " + error.message);
+    }
+  });
+}
 
 // COMPLAINT STATUS
 if (statusForm) {
@@ -365,6 +653,9 @@ if (statusForm) {
     }
 
     const tokenInput = document.getElementById("complaint-id");
+
+    if (!tokenInput || !statusResult) return;
+
     const token = tokenInput.value.trim().toUpperCase();
 
     statusResult.textContent = "शिकायत खोजी जा रही है...";
@@ -379,8 +670,7 @@ if (statusForm) {
       const snapshot = await getDocs(complaintsQuery);
 
       if (snapshot.empty) {
-        statusResult.textContent =
-          "इस अकाउंट में यह टोकन नहीं मिला।";
+        statusResult.textContent = "इस अकाउंट में यह टोकन नहीं मिला।";
         return;
       }
 
@@ -394,7 +684,6 @@ if (statusForm) {
 
     } catch (error) {
       console.error(error);
-
       statusResult.textContent =
         "स्टेटस नहीं मिल पाया: " + error.message;
     }
@@ -402,35 +691,33 @@ if (statusForm) {
 }
 
 // SUGGESTIONS
-suggestionForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+if (suggestionForm) {
+  suggestionForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  if (!currentUser) {
-    alert("सुझाव देने के लिए पहले लॉगिन करें।");
-    return;
-  }
+    if (!currentUser) {
+      alert("सुझाव देने के लिए पहले लॉगिन करें।");
+      return;
+    }
 
-  try {
-    const suggestion = {
-      ...getFormData(suggestionForm),
-      uid: currentUser.uid,
-      email: currentUser.email || "",
-      createdAt: serverTimestamp()
-    };
+    try {
+      const suggestion = {
+        ...getFormData(suggestionForm),
+        uid: currentUser.uid,
+        email: currentUser.email || "",
+        createdAt: serverTimestamp()
+      };
 
-    await setDoc(
-      doc(collection(db, "suggestions")),
-      suggestion
-    );
+      await addDoc(collection(db, "suggestions"), suggestion);
 
-    alert("आपका सुझाव सेव हो गया। धन्यवाद!");
+      alert("आपका सुझाव सेव हो गया। धन्यवाद!");
+      suggestionForm.reset();
 
-    suggestionForm.reset();
-
-  } catch (error) {
-    alert("सुझाव सेव नहीं हुआ: " + error.message);
-  }
-});
+    } catch (error) {
+      alert("सुझाव सेव नहीं हुआ: " + error.message);
+    }
+  });
+}
 
 // NOTICE BOARD - LIVE UPDATES
 if (noticeList) {
@@ -454,7 +741,6 @@ if (noticeList) {
       notices.sort((a, b) => {
         const aTime = a.createdAt?.toMillis?.() || 0;
         const bTime = b.createdAt?.toMillis?.() || 0;
-
         return bTime - aTime;
       });
 
@@ -467,10 +753,7 @@ if (noticeList) {
           makeElement("p", notice.description || "")
         );
 
-        // NOTICE LINK
         const rawLink = notice.link;
-
-        console.log("NOTICE LINK:", rawLink);
 
         if (typeof rawLink === "string" && rawLink.trim()) {
           try {
@@ -480,10 +763,7 @@ if (noticeList) {
               url.protocol === "https:" ||
               url.protocol === "http:"
             ) {
-              const link = makeElement(
-                "a",
-                "नोटिस / PDF देखें"
-              );
+              const link = makeElement("a", "नोटिस / PDF देखें");
 
               link.href = url.href;
               link.target = "_blank";
@@ -495,7 +775,6 @@ if (noticeList) {
 
               card.append(link);
             }
-
           } catch (error) {
             console.warn("गलत नोटिस लिंक:", rawLink, error);
 
@@ -510,7 +789,6 @@ if (noticeList) {
     },
     (error) => {
       console.error("नोटिस लोड त्रुटि:", error);
-
       noticeList.textContent = "नोटिस लोड नहीं हो सके।";
     }
   );
@@ -521,162 +799,8 @@ if (adminNoticeForm) {
   adminNoticeForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    if (!currentUser || !isAdmin) {
-      alert("केवल अधिकृत एडमिन नोटिस प्रकाशित कर सकते हैं।");
-      return;
-    }
+    if (!requireAdmin()) return;
 
     try {
       const notice = {
-        ...getFormData(adminNoticeForm),
-        createdAt: serverTimestamp(),
-        createdBy: currentUser.uid
-      };
-
-      if (notice.link) {
-        const url = new URL(notice.link.trim());
-
-        if (
-          url.protocol !== "https:" &&
-          url.protocol !== "http:"
-        ) {
-          throw new Error("सही PDF या नोटिस लिंक डालें।");
-        }
-
-        notice.link = url.href;
-      }
-
-      await setDoc(
-        doc(collection(db, "notices")),
-        notice
-      );
-
-      adminNoticeForm.reset();
-
-      showMessage(
-        adminNoticeMessage,
-        "नोटिस प्रकाशित हो गया।"
-      );
-
-    } catch (error) {
-      console.error(error);
-
-      showMessage(
-        adminNoticeMessage,
-        "नोटिस प्रकाशित नहीं हुआ: " + error.message
-      );
-    }
-  });
-}
-
-// ADMIN - LOAD COMPLAINTS
-if (adminLoadComplaints) {
-  adminLoadComplaints.addEventListener("click", async () => {
-    if (!currentUser || !isAdmin) {
-      alert("केवल अधिकृत एडमिन शिकायतें देख सकते हैं।");
-      return;
-    }
-
-    adminComplaintList.textContent =
-      "शिकायतें लोड हो रही हैं...";
-
-    try {
-      const snapshot = await getDocs(
-        collection(db, "complaints")
-      );
-
-      adminComplaintList.replaceChildren();
-
-      if (snapshot.empty) {
-        adminComplaintList.textContent =
-          "अभी कोई शिकायत नहीं है.";
-        return;
-      }
-
-      snapshot.docs.forEach((item) => {
-        const complaint = item.data();
-
-        const card = document.createElement("div");
-        card.className = "panel";
-
-        card.append(
-          makeElement("h3", complaint.subject || "शिकायत"),
-          makeElement("p", "टोकन: " + (complaint.token || "")),
-          makeElement("p", "श्रेणी: " + (complaint.category || "")),
-          makeElement("p", "विवरण: " + (complaint.details || "")),
-          makeElement("p", "ईमेल: " + (complaint.email || "")),
-          makeElement(
-            "p",
-            "वर्तमान स्थिति: " + (complaint.status || "Pending")
-          )
-        );
-
-        const statusLabel = makeElement("label", "नई स्थिति");
-        const statusSelect = document.createElement("select");
-
-        ["Pending", "In Progress", "Resolved"].forEach((value) => {
-          const option = document.createElement("option");
-
-          option.value = value;
-          option.textContent = value;
-
-          statusSelect.append(option);
-        });
-
-        statusSelect.value = complaint.status || "Pending";
-        statusLabel.append(statusSelect);
-
-        const replyLabel = makeElement("label", "एडमिन का जवाब");
-        const replyInput = document.createElement("textarea");
-
-        replyInput.value = complaint.reply || "";
-        replyLabel.append(replyInput);
-
-        const saveButton = makeElement(
-          "button",
-          "अपडेट सेव करें",
-          "btn btn-primary"
-        );
-
-        saveButton.type = "button";
-
-        saveButton.addEventListener("click", async () => {
-          if (!currentUser || !isAdmin) {
-            alert("एडमिन अनुमति नहीं है।");
-            return;
-          }
-
-          try {
-            await updateDoc(
-              doc(db, "complaints", item.id),
-              {
-                status: statusSelect.value,
-                reply: replyInput.value.trim(),
-                updatedAt: serverTimestamp()
-              }
-            );
-
-            alert("शिकायत अपडेट हो गई।");
-
-          } catch (error) {
-            alert("अपडेट नहीं हुआ: " + error.message);
-          }
-        });
-
-        card.append(
-          statusLabel,
-          replyLabel,
-          saveButton
-        );
-
-        adminComplaintList.append(card);
-      });
-
-    } catch (error) {
-      console.error(error);
-
-      adminComplaintList.textContent =
-        "शिकायतें लोड नहीं हुईं: " + error.message;
-    }
-  });
-}
+        ...g
