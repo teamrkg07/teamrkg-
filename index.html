@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102544">
+  <title>TEAM RKG | विद्यार्थी सहायता पोर्टल</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">RKG</span>
+    <span>TEAM RKG
+      <small>विद्यार्थी सहायता पोर्टल</small>
+    </span>
+  </div>
+  <button id="login-open" class="btn btn-light">
+    मोबाइल OTP लॉगिन
+  </button>
+</header>
+
+<nav class="nav">
+  <a href="#home">होम</a>
+  <a href="#notices">नोटिस बोर्ड</a>
+  <a href="#profile">विद्यार्थी प्रोफाइल</a>
+  <a href="#complaints">शिकायत</a>
+  <a href="#suggestions">सुझाव</a>
+  <a href="#links">महत्वपूर्ण लिंक</a>
+  <a href="#team">टीम RKG</a>
+</nav>
+
+<main>
+  <section id="home" class="hero">
+    <p class="eyebrow">राजकीय डूंगर महाविद्यालय, बीकानेर</p>
+    <h1>विद्यार्थियों की सहायता<br>अब एक ही जगह</h1>
+    <p>रिजल्ट, टाइम टेबल, प्रवेश, परीक्षा फॉर्म और विद्यार्थी सहायता।</p>
+    <a href="#notices" class="btn btn-gold">नोटिस देखें</a>
+  </section>
+
+  <section id="notices" class="section">
+    <h2>नोटिस बोर्ड</h2>
+    <div id="notice-list">
+      <p>नोटिस जल्द उपलब्ध होंगे।</p>
+    </div>
+  </section>
+
+  <section id="profile" class="section">
+    <h2>विद्यार्थी प्रोफाइल</h2>
+    <form id="profile-form" class="panel form-grid">
+      <label>विद्यार्थी का नाम
+        <input name="name" required>
+      </label>
+
+      <label>मोबाइल नंबर
+        <input name="phone" readonly>
+      </label>
+
+      <label>गांव
+        <input name="village" required>
+      </label>
+
+      <label>तहसील
+        <input name="tehsil" required>
+      </label>
+
+      <label>कोर्स
+        <select name="course" required>
+          <option value="">चुनें</option>
+          <option>BA</option>
+          <option>BSc</option>
+          <option>BCom</option>
+          <option>BBA</option>
+          <option>BCA</option>
+          <option>MA</option>
+          <option>MSc</option>
+          <option>MCom</option>
+        </select>
+      </label>
+
+      <label>सेमेस्टर
+        <select name="semester" required>
+          <option value="">चुनें</option>
+          <option>1</option>
+          <option>2</option>
+          <option>3</option>
+          <option>4</option>
+          <option>5</option>
+          <option>6</option>
+        </select>
+      </label>
+
+      <label>NCC
+        <select name="ncc">
+          <option>नहीं</option>
+          <option>हाँ</option>
+        </select>
+      </label>
+
+      <label>NSS
+        <select name="nss">
+          <option>नहीं</option>
+          <option>हाँ</option>
+        </select>
+      </label>
+
+      <button class="btn btn-primary" type="submit">प्रोफाइल सेव करें</button>
+    </form>
+  </section>
+
+  <section id="complaints" class="section">
+    <h2>शिकायत दर्ज करें</h2>
+    <form id="complaint-form" class="panel">
+      <label>शिकायत का विषय
+        <input name="subject" required>
+      </label>
+
+      <label>श्रेणी
+        <select name="category">
+          <option>परीक्षा / रिजल्ट</option>
+          <option>प्रवेश</option>
+          <option>छात्रवृत्ति</option>
+          <option>कॉलेज सुविधा</option>
+          <option>अन्य</option>
+        </select>
+      </label>
+
+      <label>शिकायत का विवरण
+        <textarea name="details" required></textarea>
+      </label>
+
+      <button class="btn btn-primary" type="submit">शिकायत भेजें</button>
+    </form>
+  </section>
+
+  <section id="suggestions" class="section">
+    <h2>विद्यार्थी सुझाव</h2>
+    <form id="suggestion-form" class="panel">
+      <textarea name="suggestion" placeholder="अपना सुझाव लिखें" required></textarea>
+      <button class="btn btn-primary" type="submit">सुझाव भेजें</button>
+    </form>
+  </section>
+
+  <section id="links" class="section">
+    <h2>महत्वपूर्ण लिंक</h2>
+    <div class="link-grid">
+      <a href="https://mgsubikaner.ac.in/" target="_blank">MGSU विश्वविद्यालय</a>
+      <a href="https://www.dungarcollege.ac.in/" target="_blank">डूंगर कॉलेज</a>
+      <a href="https://hte.rajasthan.gov.in/" target="_blank">राजस्थान उच्च शिक्षा</a>
+      <a href="https://scholarship.rajasthan.gov.in/" target="_blank">छात्रवृत्ति पोर्टल</a>
+    </div>
+  </section>
+
+  <section id="team" class="section">
+    <h2>हमारी टीम – TEAM RKG</h2>
+    <div class="team-grid">
+      <article class="team-card">
+        <div class="avatar">र</div>
+        <h3>राकेश गोदारा</h3>
+        <a href="https://instagram.com/rakesh_godara_rkg">@rakesh_godara_rkg</a>
+        <p>9602705184</p>
+      </article>
+
+      <article class="team-card">
+        <div class="avatar">भ</div>
+        <h3>भागीरथ गोदारा</h3>
+        <a href="https://instagram.com/Bhagirath_godara_dcb">@Bhagirath_godara_dcb</a>
+        <p>6377523140</p>
+      </article>
+
+      <article class="team-card">
+        <div class="avatar">वि</div>
+        <h3>विरेंद्र बलायच</h3>
+        <a href="https://instagram.com/Virendra_balaych100">@Virendra_balaych100</a>
+      </article>
+
+      <article class="team-card">
+        <div class="avatar">स</div>
+        <h3>सौरभ बिश्नोई</h3>
+        <a href="https://instagram.com/Sourabh_bishnoi_57">@Sourabh_bishnoi_57</a>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Designed &amp; Powered by Virendra Balaych<br>
+  © 2026 Team RKG. All Rights Reserved.
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
