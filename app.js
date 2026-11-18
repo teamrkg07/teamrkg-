@@ -22,6 +22,7 @@ import {
   updateDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// ELEMENTS
 const loginButton = document.getElementById("login-open");
 const profileForm = document.getElementById("profile-form");
 const complaintForm = document.getElementById("complaint-form");
@@ -123,13 +124,17 @@ function makeElement(tag, text, className = "") {
   const element = document.createElement(tag);
   element.textContent = text;
 
-  if (className) element.className = className;
+  if (className) {
+    element.className = className;
+  }
 
   return element;
 }
 
 function showMessage(element, message) {
-  if (element) element.textContent = message;
+  if (element) {
+    element.textContent = message;
+  }
 }
 
 // PROFILE
@@ -137,7 +142,11 @@ function fillProfileForm(student) {
   Object.keys(student).forEach((key) => {
     const field = profileForm.elements.namedItem(key);
 
-    if (field && student[key] !== undefined && student[key] !== null) {
+    if (
+      field &&
+      student[key] !== undefined &&
+      student[key] !== null
+    ) {
       field.value = student[key];
     }
   });
@@ -154,7 +163,9 @@ async function loadProfile(user) {
 
     const emailField = profileForm.elements.namedItem("email");
 
-    if (emailField) emailField.value = user.email || "";
+    if (emailField) {
+      emailField.value = user.email || "";
+    }
 
   } catch (error) {
     console.error("प्रोफाइल त्रुटि:", error);
@@ -162,7 +173,7 @@ async function loadProfile(user) {
   }
 }
 
-// LOGIN WINDOW
+// LOGIN BUTTON
 loginButton.addEventListener("click", () => {
   if (currentUser) {
     if (confirm("क्या आप लॉगआउट करना चाहते हैं?")) {
@@ -181,6 +192,7 @@ document.getElementById("account-close").addEventListener("click", () => {
   loginBox.style.display = "none";
 });
 
+// CREDENTIALS
 function getCredentials() {
   const email = accountEmail.value.trim();
   const password = accountPassword.value;
@@ -200,6 +212,7 @@ function getCredentials() {
 document.getElementById("account-register").addEventListener("click", async () => {
   try {
     const { email, password } = getCredentials();
+
     accountMessage.textContent = "अकाउंट बनाया जा रहा है...";
 
     await createUserWithEmailAndPassword(auth, email, password);
@@ -208,7 +221,8 @@ document.getElementById("account-register").addEventListener("click", async () =
     alert("अकाउंट बन गया है। अब प्रोफाइल भरें।");
 
   } catch (error) {
-    accountMessage.textContent = "अकाउंट नहीं बना: " + error.message;
+    accountMessage.textContent =
+      "अकाउंट नहीं बना: " + error.message;
   }
 });
 
@@ -216,6 +230,7 @@ document.getElementById("account-register").addEventListener("click", async () =
 document.getElementById("account-login").addEventListener("click", async () => {
   try {
     const { email, password } = getCredentials();
+
     accountMessage.textContent = "लॉगिन हो रहा है...";
 
     await signInWithEmailAndPassword(auth, email, password);
@@ -224,7 +239,8 @@ document.getElementById("account-login").addEventListener("click", async () => {
     alert("लॉगिन सफल हुआ।");
 
   } catch (error) {
-    accountMessage.textContent = "लॉगिन नहीं हुआ: " + error.message;
+    accountMessage.textContent =
+      "लॉगिन नहीं हुआ: " + error.message;
   }
 });
 
@@ -233,13 +249,16 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   isAdmin = false;
 
-  if (adminPanel) adminPanel.hidden = true;
+  if (adminPanel) {
+    adminPanel.hidden = true;
+  }
 
   if (user) {
     loginButton.textContent = "लॉगिन सफल / लॉगआउट";
 
     try {
       const tokenResult = await getIdTokenResult(user, true);
+
       isAdmin = tokenResult.claims.admin === true;
 
       await loadProfile(user);
@@ -254,6 +273,7 @@ onAuthStateChanged(auth, async (user) => {
 
   } else {
     loginButton.textContent = "विद्यार्थी लॉगिन";
+
     profileForm.reset();
 
     if (adminComplaintList) {
@@ -317,9 +337,14 @@ complaintForm.addEventListener("submit", async (event) => {
 
     await setDoc(complaintRef, complaint);
 
-    showMessage(tokenResult, "आपका शिकायत टोकन: " + token);
+    showMessage(
+      tokenResult,
+      "आपका शिकायत टोकन: " + token
+    );
 
-    alert("शिकायत दर्ज हो गई। अपना टोकन सुरक्षित रखें:\n" + token);
+    alert(
+      "शिकायत दर्ज हो गई। अपना टोकन सुरक्षित रखें:\n" + token
+    );
 
     complaintForm.reset();
 
@@ -354,7 +379,8 @@ if (statusForm) {
       const snapshot = await getDocs(complaintsQuery);
 
       if (snapshot.empty) {
-        statusResult.textContent = "इस अकाउंट में यह टोकन नहीं मिला।";
+        statusResult.textContent =
+          "इस अकाउंट में यह टोकन नहीं मिला।";
         return;
       }
 
@@ -368,7 +394,9 @@ if (statusForm) {
 
     } catch (error) {
       console.error(error);
-      statusResult.textContent = "स्टेटस नहीं मिल पाया: " + error.message;
+
+      statusResult.textContent =
+        "स्टेटस नहीं मिल पाया: " + error.message;
     }
   });
 }
@@ -390,9 +418,13 @@ suggestionForm.addEventListener("submit", async (event) => {
       createdAt: serverTimestamp()
     };
 
-    await setDoc(doc(collection(db, "suggestions")), suggestion);
+    await setDoc(
+      doc(collection(db, "suggestions")),
+      suggestion
+    );
 
     alert("आपका सुझाव सेव हो गया। धन्यवाद!");
+
     suggestionForm.reset();
 
   } catch (error) {
@@ -401,62 +433,88 @@ suggestionForm.addEventListener("submit", async (event) => {
 });
 
 // NOTICE BOARD - LIVE UPDATES
-onSnapshot(
-  collection(db, "notices"),
-  (snapshot) => {
-    noticeList.replaceChildren();
+if (noticeList) {
+  onSnapshot(
+    collection(db, "notices"),
+    (snapshot) => {
+      noticeList.replaceChildren();
 
-    if (snapshot.empty) {
-      noticeList.append(
-        makeElement("p", "अभी कोई नया नोटिस उपलब्ध नहीं है।")
-      );
-      return;
-    }
-
-    const notices = snapshot.docs.map((item) => ({
-      id: item.id,
-      ...item.data()
-    }));
-
-    notices.sort((a, b) => {
-      const aTime = a.createdAt?.toMillis?.() || 0;
-      const bTime = b.createdAt?.toMillis?.() || 0;
-      return bTime - aTime;
-    });
-
-    notices.forEach((notice) => {
-      const card = document.createElement("article");
-      card.className = "panel";
-
-      card.append(
-        makeElement("h3", notice.title || "नोटिस"),
-        makeElement("p", notice.description || "")
-      );
-
-      if (notice.link) {
-        try {
-          const url = new URL(notice.link);
-
-          if (url.protocol === "https:" || url.protocol === "http:") {
-            const link = makeElement("a", "नोटिस / PDF देखें");
-            link.href = url.href;
-            link.target = "_blank";
-            link.rel = "noopener noreferrer";
-            card.append(link);
-          }
-        } catch (error) {
-          console.warn("गलत नोटिस लिंक:", error);
-        }
+      if (snapshot.empty) {
+        noticeList.append(
+          makeElement("p", "अभी कोई नया नोटिस उपलब्ध नहीं है।")
+        );
+        return;
       }
 
-      noticeList.append(card);
-    });
-  },
-  (error) => {
-    console.error("नोटिस लोड त्रुटि:", error);
-    noticeList.textContent = "नोटिस लोड नहीं हो सके।";
-  }
-);
+      const notices = snapshot.docs.map((item) => ({
+        id: item.id,
+        ...item.data()
+      }));
+
+      notices.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+
+        return bTime - aTime;
+      });
+
+      notices.forEach((notice) => {
+        const card = document.createElement("article");
+        card.className = "panel";
+
+        card.append(
+          makeElement("h3", notice.title || "नोटिस"),
+          makeElement("p", notice.description || "")
+        );
+
+        // NOTICE LINK
+        const rawLink = notice.link;
+
+        console.log("NOTICE LINK:", rawLink);
+
+        if (typeof rawLink === "string" && rawLink.trim()) {
+          try {
+            const url = new URL(rawLink.trim());
+
+            if (
+              url.protocol === "https:" ||
+              url.protocol === "http:"
+            ) {
+              const link = makeElement(
+                "a",
+                "नोटिस / PDF देखें"
+              );
+
+              link.href = url.href;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              link.style.display = "inline-block";
+              link.style.marginTop = "12px";
+              link.style.color = "#0b57d0";
+              link.style.fontWeight = "bold";
+
+              card.append(link);
+            }
+
+          } catch (error) {
+            console.warn("गलत नोटिस लिंक:", rawLink, error);
+
+            card.append(
+              makeElement("p", "नोटिस लिंक सही नहीं है।")
+            );
+          }
+        }
+
+        noticeList.append(card);
+      });
+    },
+    (error) => {
+      console.error("नोटिस लोड त्रुटि:", error);
+
+      noticeList.textContent = "नोटिस लोड नहीं हो सके।";
+    }
+  );
+}
 
 // ADMIN - NOTICE PUBLISH
 if (adminNoticeForm) {
@@ -476,21 +534,37 @@ if (adminNoticeForm) {
       };
 
       if (notice.link) {
-        const url = new URL(notice.link);
+        const url = new URL(notice.link.trim());
 
-        if (url.protocol !== "https:" && url.protocol !== "http:") {
+        if (
+          url.protocol !== "https:" &&
+          url.protocol !== "http:"
+        ) {
           throw new Error("सही PDF या नोटिस लिंक डालें।");
         }
+
+        notice.link = url.href;
       }
 
-      await setDoc(doc(collection(db, "notices")), notice);
+      await setDoc(
+        doc(collection(db, "notices")),
+        notice
+      );
 
       adminNoticeForm.reset();
-      showMessage(adminNoticeMessage, "नोटिस प्रकाशित हो गया।");
+
+      showMessage(
+        adminNoticeMessage,
+        "नोटिस प्रकाशित हो गया।"
+      );
 
     } catch (error) {
       console.error(error);
-      showMessage(adminNoticeMessage, "नोटिस प्रकाशित नहीं हुआ: " + error.message);
+
+      showMessage(
+        adminNoticeMessage,
+        "नोटिस प्रकाशित नहीं हुआ: " + error.message
+      );
     }
   });
 }
@@ -503,15 +577,19 @@ if (adminLoadComplaints) {
       return;
     }
 
-    adminComplaintList.textContent = "शिकायतें लोड हो रही हैं...";
+    adminComplaintList.textContent =
+      "शिकायतें लोड हो रही हैं...";
 
     try {
-      const snapshot = await getDocs(collection(db, "complaints"));
+      const snapshot = await getDocs(
+        collection(db, "complaints")
+      );
 
       adminComplaintList.replaceChildren();
 
       if (snapshot.empty) {
-        adminComplaintList.textContent = "अभी कोई शिकायत नहीं है।";
+        adminComplaintList.textContent =
+          "अभी कोई शिकायत नहीं है.";
         return;
       }
 
@@ -527,7 +605,10 @@ if (adminLoadComplaints) {
           makeElement("p", "श्रेणी: " + (complaint.category || "")),
           makeElement("p", "विवरण: " + (complaint.details || "")),
           makeElement("p", "ईमेल: " + (complaint.email || "")),
-          makeElement("p", "वर्तमान स्थिति: " + (complaint.status || "Pending"))
+          makeElement(
+            "p",
+            "वर्तमान स्थिति: " + (complaint.status || "Pending")
+          )
         );
 
         const statusLabel = makeElement("label", "नई स्थिति");
@@ -535,8 +616,10 @@ if (adminLoadComplaints) {
 
         ["Pending", "In Progress", "Resolved"].forEach((value) => {
           const option = document.createElement("option");
+
           option.value = value;
           option.textContent = value;
+
           statusSelect.append(option);
         });
 
@@ -545,10 +628,16 @@ if (adminLoadComplaints) {
 
         const replyLabel = makeElement("label", "एडमिन का जवाब");
         const replyInput = document.createElement("textarea");
+
         replyInput.value = complaint.reply || "";
         replyLabel.append(replyInput);
 
-        const saveButton = makeElement("button", "अपडेट सेव करें", "btn btn-primary");
+        const saveButton = makeElement(
+          "button",
+          "अपडेट सेव करें",
+          "btn btn-primary"
+        );
+
         saveButton.type = "button";
 
         saveButton.addEventListener("click", async () => {
@@ -558,11 +647,14 @@ if (adminLoadComplaints) {
           }
 
           try {
-            await updateDoc(doc(db, "complaints", item.id), {
-              status: statusSelect.value,
-              reply: replyInput.value.trim(),
-              updatedAt: serverTimestamp()
-            });
+            await updateDoc(
+              doc(db, "complaints", item.id),
+              {
+                status: statusSelect.value,
+                reply: replyInput.value.trim(),
+                updatedAt: serverTimestamp()
+              }
+            );
 
             alert("शिकायत अपडेट हो गई।");
 
@@ -571,12 +663,18 @@ if (adminLoadComplaints) {
           }
         });
 
-        card.append(statusLabel, replyLabel, saveButton);
+        card.append(
+          statusLabel,
+          replyLabel,
+          saveButton
+        );
+
         adminComplaintList.append(card);
       });
 
     } catch (error) {
       console.error(error);
+
       adminComplaintList.textContent =
         "शिकायतें लोड नहीं हुईं: " + error.message;
     }
