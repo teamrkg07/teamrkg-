@@ -1,9 +1,20 @@
 
-import { auth } from "./firebase.js";
+import { auth, db } from "./firebase.js";
+
 import {
   RecaptchaVerifier,
-  signInWithPhoneNumber
+  signInWithPhoneNumber,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import {
+  doc,
+  getDoc,
+  setDoc,
+  addDoc,
+  collection,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const loginButton = document.getElementById("login-open");
 const profileForm = document.getElementById("profile-form");
@@ -81,6 +92,50 @@ document.body.appendChild(loginBox);
 const message = document.getElementById("otp-message");
 const phoneInput = document.getElementById("otp-phone");
 
+// प्रोफाइल फॉर्म में पुरानी जानकारी भरना
+function fillProfileForm(student) {
+  Object.keys(student).forEach((key) => {
+    const field = profileForm.elements.namedItem(key);
+
+    if (field && student[key] !== undefined && student[key] !== null) {
+      field.value = student[key];
+    }
+  });
+}
+
+// Firebase से प्रोफाइल लोड करना
+async function loadProfile(user) {
+  try {
+    const profileRef = doc(db, "profiles", user.uid);
+    const profileSnap = await getDoc(profileRef);
+
+    if (profileSnap.exists()) {
+      fillProfileForm(profileSnap.data());
+      console.log("पुरानी प्रोफाइल लोड हो गई।");
+    }
+
+    const phoneField = profileForm.elements.namedItem("phone");
+    if (phoneField) {
+      phoneField.value = user.phoneNumber || "";
+    }
+  } catch (error) {
+    console.error("प्रोफाइल लोड त्रुटि:", error);
+  }
+}
+
+// लॉगिन की स्थिति अपने आप जाँचना
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+
+  if (user) {
+    loginButton.textContent = "लॉगिन सफल";
+    await loadProfile(user);
+  } else {
+    loginButton.textContent = "लॉगिन करें";
+  }
+});
+
+// OTP Login Window खोलना
 loginButton.addEventListener("click", () => {
   loginBox.style.display = "flex";
   message.textContent = "";
@@ -92,7 +147,7 @@ loginButton.addEventListener("click", () => {
       { size: "normal" }
     );
 
-    recaptchaVerifier.render().catch(error => {
+    recaptchaVerifier.render().catch((error) => {
       message.textContent = error.message;
     });
   }
@@ -102,6 +157,7 @@ document.getElementById("close-otp").addEventListener("click", () => {
   loginBox.style.display = "none";
 });
 
+// OTP भेजना
 document.getElementById("send-otp").addEventListener("click", async () => {
   const phone = phoneInput.value.trim();
 
@@ -131,6 +187,7 @@ document.getElementById("send-otp").addEventListener("click", async () => {
   }
 });
 
+// OTP सत्यापित करना
 document.getElementById("verify-otp").addEventListener("click", async () => {
   const otp = document.getElementById("otp-code").value.trim();
 
@@ -139,13 +196,22 @@ document.getElementById("verify-otp").addEventListener("click", async () => {
     return;
   }
 
+  if (!confirmationResult) {
+    message.textContent = "पहले OTP भेजें।";
+    return;
+  }
+
   try {
     const result = await confirmationResult.confirm(otp);
 
     currentUser = result.user;
 
-    profileForm.elements.phone.value =
-      currentUser.phoneNumber || "";
+    const phoneField = profileForm.elements.namedItem("phone");
+    if (phoneField) {
+      phoneField.value = currentUser.phoneNumber || "";
+    }
+
+    await loadProfile(currentUser);
 
     loginButton.textContent = "लॉगिन सफल";
     loginBox.style.display = "none";
@@ -156,8 +222,8 @@ document.getElementById("verify-otp").addEventListener("click", async () => {
   }
 });
 
-// Profile form
-profileForm.addEventListener("submit", (event) => {
+// विद्यार्थी की प्रोफाइल Firebase में सेव करना
+profileForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   if (!currentUser) {
@@ -168,23 +234,47 @@ profileForm.addEventListener("submit", (event) => {
   const formData = new FormData(profileForm);
 
   const student = {
-    name: formData.get("name"),
-    phone: currentUser.phoneNumber,
-    village: formData.get("village"),
-    tehsil: formData.get("tehsil"),
-    course: formData.get("course"),
-    semester: formData.get("semester"),
-    ncc: formData.get("ncc"),
-    nss: formData.get("nss")
+    uid: currentUser.uid,
+    name: formData.get("name") || "",
+    phone: currentUser.phoneNumber || "",
+    village: formData.get("village") || "",
+    tehsil: formData.get("tehsil") || "",
+    course: formData.get("course") || "",
+    semester: formData.get("semester") || "",
+    ncc: formData.get("ncc") || "",
+    nss: formData.get("nss") || "",
+    updatedAt: serverTimestamp()
   };
 
-  console.log("Student Profile:", student);
+  try {
+    await setDoc(
+      doc(db, "profiles", currentUser.uid),
+      student,
+      { merge: true }
+    );
 
-  alert("प्रोफाइल की जानकारी प्राप्त हुई। डेटाबेस सेव सुविधा अगला चरण है।");
+    alert("आपकी प्रोफाइल Firebase में सफलतापूर्वक सेव हो गई।");
+  } catch (error) {
+    console.error("प्रोफाइल सेव त्रुटि:", error);
+    alert("प्रोफाइल सेव नहीं हुई: " + error.message);
+  }
 });
 
-// Complaint form
-complaintForm.addEventListener("submit", (event) => {
+// फॉर्म की जानकारी को साधारण डेटा में बदलना
+function getFormData(form) {
+  const data = {};
+
+  new FormData(form).forEach((value, key) => {
+    if (typeof value === "string") {
+      data[key] = value;
+    }
+  });
+
+  return data;
+}
+
+// शिकायत Firebase में सेव करना
+complaintForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   if (!currentUser) {
@@ -192,13 +282,56 @@ complaintForm.addEventListener("submit", (event) => {
     return;
   }
 
-  alert("शिकायत फॉर्म तैयार है। डेटाबेस कनेक्शन अगला चरण है।");
+  try {
+    const complaint = {
+      ...getFormData(complaintForm),
+      uid: currentUser.uid,
+      phone: currentUser.phoneNumber || "",
+      status: "Pending",
+      createdAt: serverTimestamp()
+    };
+
+    const complaintRef = await addDoc(
+      collection(db, "complaints"),
+      complaint
+    );
+
+    alert("शिकायत सफलतापूर्वक दर्ज हुई।\nशिकायत ID: " + complaintRef.id);
+
+    complaintForm.reset();
+  } catch (error) {
+    console.error("शिकायत सेव त्रुटि:", error);
+    alert("शिकायत सेव नहीं हुई: " + error.message);
+  }
 });
 
-// Suggestion form
-suggestionForm.addEventListener("submit", (event) => {
+// सुझाव Firebase में सेव करना
+suggestionForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  alert("सुझाव फॉर्म प्राप्त हुआ। धन्यवाद!");
-  suggestionForm.reset();
+  if (!currentUser) {
+    alert("सुझाव देने के लिए पहले OTP लॉगिन करें।");
+    return;
+  }
+
+  try {
+    const suggestion = {
+      ...getFormData(suggestionForm),
+      uid: currentUser.uid,
+      phone: currentUser.phoneNumber || "",
+      createdAt: serverTimestamp()
+    };
+
+    await addDoc(
+      collection(db, "suggestions"),
+      suggestion
+    );
+
+    alert("आपका सुझाव सफलतापूर्वक सेव हो गया। धन्यवाद!");
+
+    suggestionForm.reset();
+  } catch (error) {
+    console.error("सुझाव सेव त्रुटि:", error);
+    alert("सुझाव सेव नहीं हुआ: " + error.message);
+  }
 });
