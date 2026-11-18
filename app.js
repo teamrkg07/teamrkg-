@@ -2,9 +2,10 @@
 import { auth, db } from "./firebase.js";
 
 import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  onAuthStateChanged
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 import {
@@ -21,19 +22,17 @@ const profileForm = document.getElementById("profile-form");
 const complaintForm = document.getElementById("complaint-form");
 const suggestionForm = document.getElementById("suggestion-form");
 
-let confirmationResult = null;
-let recaptchaVerifier = null;
 let currentUser = null;
 
-// OTP Login Window
+// Login / Registration Window
 const loginBox = document.createElement("div");
 
-loginBox.id = "otp-login-box";
+loginBox.id = "account-login-box";
 loginBox.style.cssText = `
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.65);
+  background:rgba(0,0,0,.7);
   z-index:9999;
   justify-content:center;
   align-items:center;
@@ -49,39 +48,38 @@ loginBox.innerHTML = `
     max-width:380px;
     color:#102544;
   ">
-    <h2>मोबाइल OTP लॉगिन</h2>
+    <h2>विद्यार्थी अकाउंट</h2>
 
-    <label>मोबाइल नंबर</label>
-    <input id="otp-phone" type="tel"
-      placeholder="10 अंकों का मोबाइल नंबर"
-      maxlength="10">
+    <label>ईमेल आईडी</label>
+    <input id="account-email" type="email"
+      placeholder="अपनी ईमेल आईडी लिखें"
+      autocomplete="email">
 
-    <div id="recaptcha-container"
-      style="margin:15px 0"></div>
+    <label style="display:block;margin-top:12px">
+      पासवर्ड
+    </label>
+    <input id="account-password" type="password"
+      placeholder="कम से कम 6 अक्षर"
+      autocomplete="current-password">
 
-    <button id="send-otp" class="btn btn-primary">
-      OTP भेजें
+    <button id="account-register"
+      class="btn btn-primary"
+      style="margin-top:15px;width:100%">
+      नया अकाउंट बनाएँ
     </button>
 
-    <div id="otp-verification"
-      style="display:none;margin-top:15px">
+    <button id="account-login"
+      class="btn btn-primary"
+      style="margin-top:10px;width:100%">
+      पहले से अकाउंट है? लॉगिन करें
+    </button>
 
-      <label>OTP दर्ज करें</label>
-      <input id="otp-code" type="text"
-        placeholder="6 अंकों का OTP"
-        maxlength="6">
-
-      <button id="verify-otp" class="btn btn-primary">
-        OTP सत्यापित करें
-      </button>
-    </div>
-
-    <p id="otp-message"
+    <p id="account-message"
       style="margin-top:12px;font-size:14px"></p>
 
-    <button id="close-otp"
+    <button id="account-close"
       class="btn btn-light"
-      style="margin-top:15px">
+      style="margin-top:10px">
       बंद करें
     </button>
   </div>
@@ -89,10 +87,11 @@ loginBox.innerHTML = `
 
 document.body.appendChild(loginBox);
 
-const message = document.getElementById("otp-message");
-const phoneInput = document.getElementById("otp-phone");
+const accountEmail = document.getElementById("account-email");
+const accountPassword = document.getElementById("account-password");
+const accountMessage = document.getElementById("account-message");
 
-// प्रोफाइल फॉर्म में पुरानी जानकारी भरना
+// पुरानी प्रोफाइल फॉर्म में भरना
 function fillProfileForm(student) {
   Object.keys(student).forEach((key) => {
     const field = profileForm.elements.namedItem(key);
@@ -111,156 +110,106 @@ async function loadProfile(user) {
 
     if (profileSnap.exists()) {
       fillProfileForm(profileSnap.data());
-      console.log("पुरानी प्रोफाइल लोड हो गई।");
     }
 
     const phoneField = profileForm.elements.namedItem("phone");
-    if (phoneField) {
-      phoneField.value = user.phoneNumber || "";
+
+    if (phoneField && !phoneField.value) {
+      phoneField.value = "";
     }
   } catch (error) {
     console.error("प्रोफाइल लोड त्रुटि:", error);
+    alert("प्रोफाइल लोड नहीं हो सकी।");
   }
 }
 
-// लॉगिन की स्थिति अपने आप जाँचना
+// Login Window खोलना
+loginButton.addEventListener("click", () => {
+  if (currentUser) {
+    const logout = confirm("क्या आप लॉगआउट करना चाहते हैं?");
+
+    if (logout) {
+      signOut(auth).catch((error) => {
+        alert("लॉगआउट नहीं हुआ: " + error.message);
+      });
+    }
+
+    return;
+  }
+
+  loginBox.style.display = "flex";
+  accountMessage.textContent = "";
+});
+
+document.getElementById("account-close").addEventListener("click", () => {
+  loginBox.style.display = "none";
+});
+
+// Email और Password की जाँच
+function getCredentials() {
+  const email = accountEmail.value.trim();
+  const password = accountPassword.value;
+
+  if (!email || !password) {
+    throw new Error("ईमेल और पासवर्ड दोनों भरें।");
+  }
+
+  if (password.length < 6) {
+    throw new Error("पासवर्ड कम से कम 6 अक्षर का होना चाहिए।");
+  }
+
+  return { email, password };
+}
+
+// नया अकाउंट बनाना
+document.getElementById("account-register").addEventListener("click", async () => {
+  try {
+    const { email, password } = getCredentials();
+
+    accountMessage.textContent = "अकाउंट बनाया जा रहा है...";
+
+    await createUserWithEmailAndPassword(auth, email, password);
+
+    loginBox.style.display = "none";
+    alert("आपका अकाउंट सफलतापूर्वक बन गया है। अब प्रोफाइल भरें।");
+
+  } catch (error) {
+    accountMessage.textContent =
+      "अकाउंट नहीं बना: " + error.message;
+  }
+});
+
+// पहले से बने अकाउंट में लॉगिन
+document.getElementById("account-login").addEventListener("click", async () => {
+  try {
+    const { email, password } = getCredentials();
+
+    accountMessage.textContent = "लॉगिन हो रहा है...";
+
+    await signInWithEmailAndPassword(auth, email, password);
+
+    loginBox.style.display = "none";
+    alert("लॉगिन सफल हुआ।");
+
+  } catch (error) {
+    accountMessage.textContent =
+      "लॉगिन नहीं हुआ: " + error.message;
+  }
+});
+
+// लॉगिन की स्थिति जाँचना
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
 
   if (user) {
-    loginButton.textContent = "लॉगिन सफल";
+    loginButton.textContent = "लॉगिन सफल / लॉगआउट";
     await loadProfile(user);
   } else {
     loginButton.textContent = "लॉगिन करें";
   }
 });
 
-// OTP Login Window खोलना
-loginButton.addEventListener("click", () => {
-  loginBox.style.display = "flex";
-  message.textContent = "";
-
-  if (!recaptchaVerifier) {
-    recaptchaVerifier = new RecaptchaVerifier(
-      auth,
-      "recaptcha-container",
-      { size: "normal" }
-    );
-
-    recaptchaVerifier.render().catch((error) => {
-      message.textContent = error.message;
-    });
-  }
-});
-
-document.getElementById("close-otp").addEventListener("click", () => {
-  loginBox.style.display = "none";
-});
-
-// OTP भेजना
-document.getElementById("send-otp").addEventListener("click", async () => {
-  const phone = phoneInput.value.trim();
-
-  if (!/^[6-9]\d{9}$/.test(phone)) {
-    message.textContent = "सही 10 अंकों का भारतीय मोबाइल नंबर लिखें।";
-    return;
-  }
-
-  try {
-    message.textContent = "OTP भेजा जा रहा है...";
-
-    confirmationResult = await signInWithPhoneNumber(
-      auth,
-      "+91" + phone,
-      recaptchaVerifier
-    );
-
-    document.getElementById("otp-verification").style.display = "block";
-    message.textContent = "OTP भेज दिया गया है।";
-  } catch (error) {
-    message.textContent = "OTP नहीं भेजा जा सका: " + error.message;
-
-    if (recaptchaVerifier) {
-      recaptchaVerifier.clear();
-      recaptchaVerifier = null;
-    }
-  }
-});
-
-// OTP सत्यापित करना
-document.getElementById("verify-otp").addEventListener("click", async () => {
-  const otp = document.getElementById("otp-code").value.trim();
-
-  if (!/^\d{6}$/.test(otp)) {
-    message.textContent = "6 अंकों का सही OTP लिखें।";
-    return;
-  }
-
-  if (!confirmationResult) {
-    message.textContent = "पहले OTP भेजें।";
-    return;
-  }
-
-  try {
-    const result = await confirmationResult.confirm(otp);
-
-    currentUser = result.user;
-
-    const phoneField = profileForm.elements.namedItem("phone");
-    if (phoneField) {
-      phoneField.value = currentUser.phoneNumber || "";
-    }
-
-    await loadProfile(currentUser);
-
-    loginButton.textContent = "लॉगिन सफल";
-    loginBox.style.display = "none";
-
-    alert("मोबाइल OTP सत्यापित हो गया है।");
-  } catch (error) {
-    message.textContent = "OTP गलत है या समाप्त हो गया है।";
-  }
-});
-
-// विद्यार्थी की प्रोफाइल Firebase में सेव करना
-profileForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  if (!currentUser) {
-    alert("पहले मोबाइल OTP से लॉगिन करें।");
-    return;
-  }
-
-  const formData = new FormData(profileForm);
-
-  const student = {
-    uid: currentUser.uid,
-    name: formData.get("name") || "",
-    phone: currentUser.phoneNumber || "",
-    village: formData.get("village") || "",
-    tehsil: formData.get("tehsil") || "",
-    course: formData.get("course") || "",
-    semester: formData.get("semester") || "",
-    ncc: formData.get("ncc") || "",
-    nss: formData.get("nss") || "",
-    updatedAt: serverTimestamp()
-  };
-
-  try {
-    await setDoc(
-      doc(db, "profiles", currentUser.uid),
-      student,
-      { merge: true }
-    );
-
-    alert("आपकी प्रोफाइल Firebase में सफलतापूर्वक सेव हो गई।");
-  } catch (error) {
-    console.error("प्रोफाइल सेव त्रुटि:", error);
-    alert("प्रोफाइल सेव नहीं हुई: " + error.message);
-  }
-});
-
-// फॉर्म की जानकारी को साधारण डेटा में बदलना
+// Form Data लेना
 function getFormData(form) {
   const data = {};
 
@@ -273,12 +222,43 @@ function getFormData(form) {
   return data;
 }
 
-// शिकायत Firebase में सेव करना
+// विद्यार्थी की प्रोफाइल सेव करना
+profileForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!currentUser) {
+    alert("पहले अपना अकाउंट बनाएँ या लॉगिन करें।");
+    return;
+  }
+
+  try {
+    const student = {
+      ...getFormData(profileForm),
+      uid: currentUser.uid,
+      email: currentUser.email || "",
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(
+      doc(db, "profiles", currentUser.uid),
+      student,
+      { merge: true }
+    );
+
+    alert("आपकी प्रोफाइल सफलतापूर्वक सेव हो गई।");
+
+  } catch (error) {
+    console.error("प्रोफाइल सेव त्रुटि:", error);
+    alert("प्रोफाइल सेव नहीं हुई: " + error.message);
+  }
+});
+
+// शिकायत सेव करना
 complaintForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   if (!currentUser) {
-    alert("शिकायत के लिए पहले OTP लॉगिन करें।");
+    alert("शिकायत के लिए पहले लॉगिन करें।");
     return;
   }
 
@@ -286,7 +266,7 @@ complaintForm.addEventListener("submit", async (event) => {
     const complaint = {
       ...getFormData(complaintForm),
       uid: currentUser.uid,
-      phone: currentUser.phoneNumber || "",
+      email: currentUser.email || "",
       status: "Pending",
       createdAt: serverTimestamp()
     };
@@ -296,21 +276,24 @@ complaintForm.addEventListener("submit", async (event) => {
       complaint
     );
 
-    alert("शिकायत सफलतापूर्वक दर्ज हुई।\nशिकायत ID: " + complaintRef.id);
+    alert(
+      "शिकायत दर्ज हो गई।\nशिकायत ID: " + complaintRef.id
+    );
 
     complaintForm.reset();
+
   } catch (error) {
-    console.error("शिकायत सेव त्रुटि:", error);
-    alert("शिकायत सेव नहीं हुई: " + error.message);
+    console.error("शिकायत त्रुटि:", error);
+    alert("शिकायत दर्ज नहीं हुई: " + error.message);
   }
 });
 
-// सुझाव Firebase में सेव करना
+// सुझाव सेव करना
 suggestionForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   if (!currentUser) {
-    alert("सुझाव देने के लिए पहले OTP लॉगिन करें।");
+    alert("सुझाव देने के लिए पहले लॉगिन करें।");
     return;
   }
 
@@ -318,7 +301,7 @@ suggestionForm.addEventListener("submit", async (event) => {
     const suggestion = {
       ...getFormData(suggestionForm),
       uid: currentUser.uid,
-      phone: currentUser.phoneNumber || "",
+      email: currentUser.email || "",
       createdAt: serverTimestamp()
     };
 
@@ -330,8 +313,9 @@ suggestionForm.addEventListener("submit", async (event) => {
     alert("आपका सुझाव सफलतापूर्वक सेव हो गया। धन्यवाद!");
 
     suggestionForm.reset();
+
   } catch (error) {
-    console.error("सुझाव सेव त्रुटि:", error);
+    console.error("सुझाव त्रुटि:", error);
     alert("सुझाव सेव नहीं हुआ: " + error.message);
   }
 });
