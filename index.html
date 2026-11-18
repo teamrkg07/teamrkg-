@@ -5,20 +5,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#102544">
+  <meta name="description" content="TEAM RKG विद्यार्थी सहायता पोर्टल - राजकीय डूंगर महाविद्यालय बीकानेर">
   <title>TEAM RKG | विद्यार्थी सहायता पोर्टल</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
 <header class="topbar">
   <div class="brand">
     <span class="brand-mark">RKG</span>
-    <span>TEAM RKG
+    <span>
+      TEAM RKG
       <small>विद्यार्थी सहायता पोर्टल</small>
     </span>
   </div>
-  <button id="login-open" class="btn btn-light">
-    मोबाइल OTP लॉगिन
+
+  <button id="login-open" class="btn btn-light" type="button">
+    विद्यार्थी लॉगिन
   </button>
 </header>
 
@@ -33,163 +37,297 @@
 </nav>
 
 <main>
+
+  <!-- HOME -->
   <section id="home" class="hero">
     <p class="eyebrow">राजकीय डूंगर महाविद्यालय, बीकानेर</p>
-    <h1>विद्यार्थियों की सहायता<br>अब एक ही जगह</h1>
-    <p>रिजल्ट, टाइम टेबल, प्रवेश, परीक्षा फॉर्म और विद्यार्थी सहायता।</p>
-    <a href="#notices" class="btn btn-gold">नोटिस देखें</a>
+
+    <h1>
+      विद्यार्थियों की सहायता<br>
+      अब एक ही जगह
+    </h1>
+
+    <p>
+      रिजल्ट, टाइम टेबल, प्रवेश, परीक्षा फॉर्म
+      और विद्यार्थी सहायता।
+    </p>
+
+    <a href="#notices" class="btn btn-gold">
+      नोटिस देखें
+    </a>
   </section>
 
+  <!-- NOTICE BOARD -->
   <section id="notices" class="section">
     <h2>नोटिस बोर्ड</h2>
+
     <div id="notice-list">
       <p>नोटिस जल्द उपलब्ध होंगे।</p>
     </div>
   </section>
 
+  <!-- STUDENT PROFILE -->
   <section id="profile" class="section">
     <h2>विद्यार्थी प्रोफाइल</h2>
+
+    <p>पहले विद्यार्थी अकाउंट बनाएँ या लॉगिन करें।</p>
+
     <form id="profile-form" class="panel form-grid">
-      <label>विद्यार्थी का नाम
-        <input name="name" required>
+
+      <label>
+        विद्यार्थी का नाम
+        <input
+          type="text"
+          name="name"
+          placeholder="अपना पूरा नाम लिखें"
+          required
+        >
       </label>
 
-      <label>मोबाइल नंबर
-        <input name="phone" readonly>
+      <label>
+        ईमेल आईडी
+        <input
+          type="email"
+          name="email"
+          placeholder="अपनी ईमेल आईडी"
+          readonly
+        >
       </label>
 
-      <label>गांव
-        <input name="village" required>
+      <label>
+        मोबाइल नंबर
+        <input
+          type="tel"
+          name="phone"
+          placeholder="10 अंकों का मोबाइल नंबर"
+          maxlength="10"
+          pattern="[6-9][0-9]{9}"
+          inputmode="numeric"
+          required
+        >
       </label>
 
-      <label>तहसील
-        <input name="tehsil" required>
+      <label>
+        गाँव
+        <input
+          type="text"
+          name="village"
+          placeholder="अपने गाँव का नाम"
+          required
+        >
       </label>
 
-      <label>कोर्स
+      <label>
+        तहसील
+        <input
+          type="text"
+          name="tehsil"
+          placeholder="अपनी तहसील"
+          required
+        >
+      </label>
+
+      <label>
+        जिला
+        <input
+          type="text"
+          name="district"
+          value="बीकानेर"
+        >
+      </label>
+
+      <label>
+        कोर्स
         <select name="course" required>
-          <option value="">चुनें</option>
-          <option>BA</option>
-          <option>BSc</option>
-          <option>BCom</option>
-          <option>BBA</option>
-          <option>BCA</option>
-          <option>MA</option>
-          <option>MSc</option>
-          <option>MCom</option>
+          <option value="">कोर्स चुनें</option>
+          <option value="BA">BA</option>
+          <option value="BSc">BSc</option>
+          <option value="BCom">BCom</option>
+          <option value="BBA">BBA</option>
+          <option value="BCA">BCA</option>
+          <option value="MA">MA</option>
+          <option value="MSc">MSc</option>
+          <option value="MCom">MCom</option>
         </select>
       </label>
 
-      <label>सेमेस्टर
+      <label>
+        सेमेस्टर
         <select name="semester" required>
-          <option value="">चुनें</option>
-          <option>1</option>
-          <option>2</option>
-          <option>3</option>
-          <option>4</option>
-          <option>5</option>
-          <option>6</option>
+          <option value="">सेमेस्टर चुनें</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
         </select>
       </label>
 
-      <label>NCC
+      <label>
+        NCC
         <select name="ncc">
-          <option>नहीं</option>
-          <option>हाँ</option>
+          <option value="नहीं">नहीं</option>
+          <option value="हाँ">हाँ</option>
         </select>
       </label>
 
-      <label>NSS
+      <label>
+        NSS
         <select name="nss">
-          <option>नहीं</option>
-          <option>हाँ</option>
+          <option value="नहीं">नहीं</option>
+          <option value="हाँ">हाँ</option>
         </select>
       </label>
 
-      <button class="btn btn-primary" type="submit">प्रोफाइल सेव करें</button>
+      <button class="btn btn-primary" type="submit">
+        प्रोफाइल सेव करें
+      </button>
+
     </form>
   </section>
 
+  <!-- COMPLAINT -->
   <section id="complaints" class="section">
     <h2>शिकायत दर्ज करें</h2>
+
+    <p>शिकायत दर्ज करने के लिए विद्यार्थी लॉगिन जरूरी है।</p>
+
     <form id="complaint-form" class="panel">
-      <label>शिकायत का विषय
-        <input name="subject" required>
+
+      <label>
+        शिकायत का विषय
+        <input
+          type="text"
+          name="subject"
+          placeholder="शिकायत का विषय लिखें"
+          required
+        >
       </label>
 
-      <label>श्रेणी
-        <select name="category">
-          <option>परीक्षा / रिजल्ट</option>
-          <option>प्रवेश</option>
-          <option>छात्रवृत्ति</option>
-          <option>कॉलेज सुविधा</option>
-          <option>अन्य</option>
+      <label>
+        शिकायत की श्रेणी
+        <select name="category" required>
+          <option value="परीक्षा / रिजल्ट">परीक्षा / रिजल्ट</option>
+          <option value="प्रवेश">प्रवेश</option>
+          <option value="छात्रवृत्ति">छात्रवृत्ति</option>
+          <option value="कॉलेज सुविधा">कॉलेज सुविधा</option>
+          <option value="अन्य">अन्य</option>
         </select>
       </label>
 
-      <label>शिकायत का विवरण
-        <textarea name="details" required></textarea>
+      <label>
+        शिकायत का विवरण
+        <textarea
+          name="details"
+          placeholder="अपनी समस्या विस्तार से लिखें"
+          required
+        ></textarea>
       </label>
 
-      <button class="btn btn-primary" type="submit">शिकायत भेजें</button>
+      <button class="btn btn-primary" type="submit">
+        शिकायत भेजें
+      </button>
+
     </form>
   </section>
 
+  <!-- SUGGESTIONS -->
   <section id="suggestions" class="section">
     <h2>विद्यार्थी सुझाव</h2>
+
     <form id="suggestion-form" class="panel">
-      <textarea name="suggestion" placeholder="अपना सुझाव लिखें" required></textarea>
-      <button class="btn btn-primary" type="submit">सुझाव भेजें</button>
+
+      <label>
+        अपना सुझाव लिखें
+        <textarea
+          name="suggestion"
+          placeholder="कॉलेज और विद्यार्थियों के लिए अपना सुझाव लिखें"
+          required
+        ></textarea>
+      </label>
+
+      <button class="btn btn-primary" type="submit">
+        सुझाव भेजें
+      </button>
+
     </form>
   </section>
 
+  <!-- IMPORTANT LINKS -->
   <section id="links" class="section">
     <h2>महत्वपूर्ण लिंक</h2>
+
     <div class="link-grid">
-      <a href="https://mgsubikaner.ac.in/" target="_blank">MGSU विश्वविद्यालय</a>
-      <a href="https://www.dungarcollege.ac.in/" target="_blank">डूंगर कॉलेज</a>
-      <a href="https://hte.rajasthan.gov.in/" target="_blank">राजस्थान उच्च शिक्षा</a>
-      <a href="https://scholarship.rajasthan.gov.in/" target="_blank">छात्रवृत्ति पोर्टल</a>
+      <a href="https://mgsubikaner.ac.in/" target="_blank" rel="noopener">
+        MGSU विश्वविद्यालय
+      </a>
+
+      <a href="https://www.dungarcollege.ac.in/" target="_blank" rel="noopener">
+        डूंगर कॉलेज
+      </a>
+
+      <a href="https://hte.rajasthan.gov.in/" target="_blank" rel="noopener">
+        राजस्थान उच्च शिक्षा
+      </a>
+
+      <a href="https://scholarship.rajasthan.gov.in/" target="_blank" rel="noopener">
+        छात्रवृत्ति पोर्टल
+      </a>
     </div>
   </section>
 
+  <!-- TEAM -->
   <section id="team" class="section">
     <h2>हमारी टीम – TEAM RKG</h2>
+
     <div class="team-grid">
+
       <article class="team-card">
         <div class="avatar">र</div>
         <h3>राकेश गोदारा</h3>
-        <a href="https://instagram.com/rakesh_godara_rkg">@rakesh_godara_rkg</a>
+        <a href="https://instagram.com/rakesh_godara_rkg" target="_blank" rel="noopener">
+          @rakesh_godara_rkg
+        </a>
         <p>9602705184</p>
       </article>
 
       <article class="team-card">
         <div class="avatar">भ</div>
         <h3>भागीरथ गोदारा</h3>
-        <a href="https://instagram.com/Bhagirath_godara_dcb">@Bhagirath_godara_dcb</a>
+        <a href="https://instagram.com/Bhagirath_godara_dcb" target="_blank" rel="noopener">
+          @Bhagirath_godara_dcb
+        </a>
         <p>6377523140</p>
       </article>
 
       <article class="team-card">
         <div class="avatar">वि</div>
         <h3>विरेंद्र बलायच</h3>
-        <a href="https://instagram.com/Virendra_balaych100">@Virendra_balaych100</a>
+        <a href="https://instagram.com/Virendra_balaych100" target="_blank" rel="noopener">
+          @Virendra_balaych100
+        </a>
       </article>
 
       <article class="team-card">
         <div class="avatar">स</div>
         <h3>सौरभ बिश्नोई</h3>
-        <a href="https://instagram.com/Sourabh_bishnoi_57">@Sourabh_bishnoi_57</a>
+        <a href="https://instagram.com/Sourabh_bishnoi_57" target="_blank" rel="noopener">
+          @Sourabh_bishnoi_57
+        </a>
       </article>
+
     </div>
   </section>
+
 </main>
 
 <footer>
-  Designed &amp; Powered by Virendra Balaych<br>
+  TEAM RKG – विद्यार्थी सहायता पोर्टल<br>
   © 2026 Team RKG. All Rights Reserved.
 </footer>
 
 <script type="module" src="app.js"></script>
+
 </body>
 </html>
