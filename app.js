@@ -96,7 +96,11 @@ function fillProfileForm(student) {
   Object.keys(student).forEach((key) => {
     const field = profileForm.elements.namedItem(key);
 
-    if (field && student[key] !== undefined && student[key] !== null) {
+    if (
+      field &&
+      student[key] !== undefined &&
+      student[key] !== null
+    ) {
       field.value = student[key];
     }
   });
@@ -112,11 +116,13 @@ async function loadProfile(user) {
       fillProfileForm(profileSnap.data());
     }
 
-    const phoneField = profileForm.elements.namedItem("phone");
+    // ईमेल अपने आप भरना
+    const emailField = profileForm.elements.namedItem("email");
 
-    if (phoneField && !phoneField.value) {
-      phoneField.value = "";
+    if (emailField) {
+      emailField.value = user.email || "";
     }
+
   } catch (error) {
     console.error("प्रोफाइल लोड त्रुटि:", error);
     alert("प्रोफाइल लोड नहीं हो सकी।");
@@ -141,6 +147,7 @@ loginButton.addEventListener("click", () => {
   accountMessage.textContent = "";
 });
 
+// Login Window बंद करना
 document.getElementById("account-close").addEventListener("click", () => {
   loginBox.style.display = "none";
 });
@@ -171,6 +178,7 @@ document.getElementById("account-register").addEventListener("click", async () =
     await createUserWithEmailAndPassword(auth, email, password);
 
     loginBox.style.display = "none";
+
     alert("आपका अकाउंट सफलतापूर्वक बन गया है। अब प्रोफाइल भरें।");
 
   } catch (error) {
@@ -189,6 +197,7 @@ document.getElementById("account-login").addEventListener("click", async () => {
     await signInWithEmailAndPassword(auth, email, password);
 
     loginBox.style.display = "none";
+
     alert("लॉगिन सफल हुआ।");
 
   } catch (error) {
@@ -203,9 +212,18 @@ onAuthStateChanged(auth, async (user) => {
 
   if (user) {
     loginButton.textContent = "लॉगिन सफल / लॉगआउट";
+
+    const emailField = profileForm.elements.namedItem("email");
+
+    if (emailField) {
+      emailField.value = user.email || "";
+    }
+
     await loadProfile(user);
+
   } else {
     loginButton.textContent = "लॉगिन करें";
+    profileForm.reset();
   }
 });
 
