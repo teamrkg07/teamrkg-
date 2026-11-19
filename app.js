@@ -10,797 +10,776 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 import {
+  collection,
   doc,
   getDoc,
-  setDoc,
-  addDoc,
-  deleteDoc,
-  collection,
-  serverTimestamp,
   getDocs,
+  addDoc,
+  setDoc,
+  updateDoc,
   query,
   where,
-  onSnapshot,
-  updateDoc
+  serverTimestamp,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ELEMENTS
-const loginButton = document.getElementById("login-open");
-const profileForm = document.getElementById("profile-form");
-const complaintForm = document.getElementById("complaint-form");
-const suggestionForm = document.getElementById("suggestion-form");
-
-const statusForm = document.getElementById("complaint-status-form");
-const statusResult = document.getElementById("complaint-status-result");
-const tokenResult = document.getElementById("complaint-token-result");
-
-const noticeList = document.getElementById("notice-list");
-
-const adminPanel = document.getElementById("admin-panel");
-const adminNoticeForm = document.getElementById("admin-notice-form");
-const adminNoticeMessage = document.getElementById("admin-notice-message");
-const adminLoadComplaints = document.getElementById("admin-load-complaints");
-const adminComplaintList = document.getElementById("admin-complaint-list");
-
-const adminStudentList = document.getElementById("admin-student-list");
-const adminSuggestionList = document.getElementById("admin-suggestion-list");
+// ======================================
+// BASIC VARIABLES
+// ======================================
 
 let currentUser = null;
 let isAdmin = false;
 
-// COMMON HELPERS
-function getFormData(form) {
-  const data = {};
+const $ = (id) => document.getElementById(id);
 
-  new FormData(form).forEach((value, key) => {
-    if (typeof value === "string") {
-      data[key] = value.trim();
-    }
-  });
+const loginButton = $("login-open");
+const adminLoginButton = $("admin-login-open");
+const adminPanel = $("admin-panel");
 
-  return data;
-}
+const profileForm = $("profile-form");
+const complaintForm = $("complaint-form");
+const complaintStatusForm = $("complaint-status-form");
+const suggestionForm = $("suggestion-form");
+const adminNoticeForm = $("admin-notice-form");
 
-function makeElement(tag, text, className = "") {
-  const element = document.createElement(tag);
+const noticeList = $("notice-list");
+const complaintTokenResult = $("complaint-token-result");
+const complaintStatusResult = $("complaint-status-result");
+const adminNoticeMessage = $("admin-notice-message");
+
+function message(element, text, color = "#102544") {
+  if (!element) return;
   element.textContent = text;
-
-  if (className) {
-    element.className = className;
-  }
-
-  return element;
+  element.style.color = color;
 }
 
-function showMessage(element, message) {
-  if (element) {
-    element.textContent = message;
-  }
+function element(tag, text, className = "") {
+  const el = document.createElement(tag);
+  el.textContent = text || "";
+  if (className) el.className = className;
+  return el;
 }
 
-function createAdminButton(text, className, callback) {
-  const button = makeElement("button", text, className);
-  button.type = "button";
-  button.addEventListener("click", callback);
-  return button;
+function formatDate(value) {
+  if (!value) return "उपलब्ध नहीं";
+  const date = value.toDate ? value.toDate() : new Date(value);
+  return date.toLocaleString("hi-IN");
+}
+
+function requireLogin() {
+  if (!currentUser) {
+    alert("पहले विद्यार्थी लॉगिन करें।");
+    return false;
+  }
+  return true;
 }
 
 function requireAdmin() {
   if (!currentUser || !isAdmin) {
-    alert("केवल अधिकृत एडमिन यह काम कर सकते हैं।");
+    alert("यह सुविधा केवल अधिकृत Admin के लिए है।");
     return false;
   }
-
   return true;
 }
 
-// LOGIN WINDOW
-const loginBox = document.createElement("div");
+// ======================================
+// STUDENT LOGIN WINDOW
+// ======================================
 
-loginBox.id = "account-login-box";
-loginBox.style.cssText = `
+const studentBox = document.createElement("div");
+
+studentBox.style.cssText = `
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.7);
-  z-index:9999;
+  z-index:9998;
+  background:rgba(0,0,0,.75);
   justify-content:center;
   align-items:center;
   padding:20px;
 `;
 
-loginBox.innerHTML = `
-  <div style="
-    background:white;
-    padding:25px;
-    border-radius:12px;
-    width:100%;
-    max-width:380px;
-    color:#102544;
-  ">
-    <h2>विद्यार्थी अकाउंट</h2>
+studentBox.innerHTML = `
+  <div style="background:white;color:#102544;padding:24px;
+  border-radius:14px;width:100%;max-width:380px;">
+
+    <h2>विद्यार्थी लॉगिन</h2>
 
     <label>ईमेल आईडी</label>
-    <input id="account-email" type="email"
-      placeholder="अपनी ईमेल आईडी"
-      autocomplete="email">
+    <input id="student-email" type="email"
+    autocomplete="username" placeholder="ईमेल आईडी"
+    style="width:100%;padding:12px;margin:8px 0;">
 
-    <label style="display:block;margin-top:12px">
-      पासवर्ड
-    </label>
-    <input id="account-password" type="password"
-      placeholder="पासवर्ड"
-      autocomplete="current-password">
+    <label>पासवर्ड</label>
+    <input id="student-password" type="password"
+    autocomplete="current-password" placeholder="पासवर्ड"
+    style="width:100%;padding:12px;margin:8px 0;">
 
-    <button id="account-register"
-      class="btn btn-primary"
-      style="margin-top:15px;width:100%">
-      नया अकाउंट बनाएँ
+    <button id="student-login-submit" class="btn btn-primary"
+    type="button" style="width:100%;margin-top:10px;">
+    लॉगिन करें
     </button>
 
-    <button id="account-login"
-      class="btn btn-primary"
-      style="margin-top:10px;width:100%">
-      लॉगिन करें
+    <button id="student-register-submit" class="btn btn-light"
+    type="button" style="width:100%;margin-top:8px;">
+    नया अकाउंट बनाएँ
     </button>
 
-    <p id="account-message"></p>
+    <p id="student-message"></p>
 
-    <button id="account-close"
-      class="btn btn-light">
-      बंद करें
-    </button>
+    <button id="student-close" class="btn btn-light"
+    type="button">बंद करें</button>
+
   </div>
 `;
 
-document.body.appendChild(loginBox);
+document.body.appendChild(studentBox);
 
-const accountEmail = document.getElementById("account-email");
-const accountPassword = document.getElementById("account-password");
-const accountMessage = document.getElementById("account-message");
+const studentEmail = $("student-email");
+const studentPassword = $("student-password");
+const studentMessage = $("student-message");
 
-// PROFILE
-function fillProfileForm(student) {
-  if (!profileForm) return;
-
-  Object.keys(student).forEach((key) => {
-    const field = profileForm.elements.namedItem(key);
-
-    if (
-      field &&
-      student[key] !== undefined &&
-      student[key] !== null
-    ) {
-      field.value = student[key];
+loginButton?.addEventListener("click", async () => {
+  if (currentUser) {
+    if (confirm("क्या आप लॉगआउट करना चाहते हैं?")) {
+      await signOut(auth);
     }
-  });
-}
-
-async function loadProfile(user) {
-  if (!profileForm) return;
-
-  try {
-    const profileRef = doc(db, "profiles", user.uid);
-    const profileSnap = await getDoc(profileRef);
-
-    if (profileSnap.exists()) {
-      fillProfileForm(profileSnap.data());
-    }
-
-    const emailField = profileForm.elements.namedItem("email");
-
-    if (emailField) {
-      emailField.value = user.email || "";
-    }
-  } catch (error) {
-    console.error("प्रोफाइल त्रुटि:", error);
-    alert("प्रोफाइल लोड नहीं हो सकी।");
+    return;
   }
-}
 
-// LOGIN BUTTON
-if (loginButton) {
-  loginButton.addEventListener("click", () => {
-    if (currentUser) {
-      if (confirm("क्या आप लॉगआउट करना चाहते हैं?")) {
-        signOut(auth).catch((error) => {
-          alert("लॉगआउट नहीं हुआ: " + error.message);
-        });
-      }
-      return;
-    }
-
-    loginBox.style.display = "flex";
-    accountMessage.textContent = "";
-  });
-}
-
-document.getElementById("account-close").addEventListener("click", () => {
-  loginBox.style.display = "none";
+  studentBox.style.display = "flex";
+  message(studentMessage, "");
 });
 
-// CREDENTIALS
-function getCredentials() {
-  const email = accountEmail.value.trim();
-  const password = accountPassword.value;
+$("student-close").addEventListener("click", () => {
+  studentBox.style.display = "none";
+});
+
+$("student-login-submit").addEventListener("click", async () => {
+  const email = studentEmail.value.trim();
+  const password = studentPassword.value;
 
   if (!email || !password) {
-    throw new Error("ईमेल और पासवर्ड भरें।");
+    message(studentMessage, "ईमेल और पासवर्ड भरें।", "red");
+    return;
+  }
+
+  try {
+    message(studentMessage, "लॉगिन हो रहा है...");
+    await signInWithEmailAndPassword(auth, email, password);
+    studentBox.style.display = "none";
+    studentPassword.value = "";
+  } catch (error) {
+    message(studentMessage, "लॉगिन असफल: " + error.message, "red");
+  }
+});
+
+$("student-register-submit").addEventListener("click", async () => {
+  const email = studentEmail.value.trim();
+  const password = studentPassword.value;
+
+  if (!email || !password) {
+    message(studentMessage, "ईमेल और पासवर्ड भरें।", "red");
+    return;
   }
 
   if (password.length < 6) {
-    throw new Error("पासवर्ड कम से कम 6 अक्षर का होना चाहिए।");
+    message(studentMessage, "पासवर्ड कम से कम 6 अक्षर का रखें।", "red");
+    return;
   }
 
-  return { email, password };
-}
-
-// REGISTER
-document.getElementById("account-register").addEventListener("click", async () => {
   try {
-    const { email, password } = getCredentials();
-
-    accountMessage.textContent = "अकाउंट बनाया जा रहा है...";
-
+    message(studentMessage, "अकाउंट बनाया जा रहा है...");
     await createUserWithEmailAndPassword(auth, email, password);
-
-    loginBox.style.display = "none";
-    alert("अकाउंट बन गया है। अब प्रोफाइल भरें।");
+    studentBox.style.display = "none";
+    studentPassword.value = "";
+    alert("विद्यार्थी अकाउंट बन गया।");
   } catch (error) {
-    accountMessage.textContent = "अकाउंट नहीं बना: " + error.message;
+    message(studentMessage, "अकाउंट नहीं बना: " + error.message, "red");
   }
 });
 
-// LOGIN
-document.getElementById("account-login").addEventListener("click", async () => {
+// ======================================
+// ADMIN LOGIN WINDOW
+// ======================================
+
+const adminBox = document.createElement("div");
+
+adminBox.style.cssText = `
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:rgba(0,0,0,.75);
+  justify-content:center;
+  align-items:center;
+  padding:20px;
+`;
+
+adminBox.innerHTML = `
+  <div style="background:white;color:#102544;padding:24px;
+  border-radius:14px;width:100%;max-width:380px;">
+
+    <h2>TEAM RKG Admin Login</h2>
+
+    <label>Admin Email</label>
+    <input id="admin-email" type="email"
+    autocomplete="username" placeholder="Admin Email"
+    style="width:100%;padding:12px;margin:8px 0;">
+
+    <label>पासवर्ड</label>
+    <input id="admin-password" type="password"
+    autocomplete="current-password" placeholder="पासवर्ड"
+    style="width:100%;padding:12px;margin:8px 0;">
+
+    <button id="admin-login-submit" class="btn btn-primary"
+    type="button" style="width:100%;margin-top:10px;">
+    Admin Login
+    </button>
+
+    <p id="admin-message"></p>
+
+    <button id="admin-close" class="btn btn-light"
+    type="button">बंद करें</button>
+
+  </div>
+`;
+
+document.body.appendChild(adminBox);
+
+const adminEmail = $("admin-email");
+const adminPassword = $("admin-password");
+const adminMessage = $("admin-message");
+
+adminLoginButton?.addEventListener("click", () => {
+  if (currentUser) {
+    if (isAdmin) {
+      adminPanel?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      alert("पहले विद्यार्थी अकाउंट से लॉगआउट करें।");
+    }
+    return;
+  }
+
+  adminBox.style.display = "flex";
+  message(adminMessage, "");
+});
+
+$("admin-close").addEventListener("click", () => {
+  adminBox.style.display = "none";
+});
+
+$("admin-login-submit").addEventListener("click", async () => {
+  const email = adminEmail.value.trim();
+  const password = adminPassword.value;
+
+  if (!email || !password) {
+    message(adminMessage, "ईमेल और पासवर्ड भरें।", "red");
+    return;
+  }
+
   try {
-    const { email, password } = getCredentials();
+    message(adminMessage, "Admin अनुमति जाँची जा रही है...");
 
-    accountMessage.textContent = "लॉगिन हो रहा है...";
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    const token = await getIdTokenResult(result.user, true);
 
-    await signInWithEmailAndPassword(auth, email, password);
+    if (token.claims.admin !== true) {
+      await signOut(auth);
+      message(adminMessage, "यह अधिकृत Admin अकाउंट नहीं है।", "red");
+      return;
+    }
 
-    loginBox.style.display = "none";
-    alert("लॉगिन सफल हुआ।");
+    adminBox.style.display = "none";
+    adminPassword.value = "";
+    alert("Admin Login सफल हुआ।");
+
   } catch (error) {
-    accountMessage.textContent = "लॉगिन नहीं हुआ: " + error.message;
+    message(adminMessage, "लॉगिन असफल: " + error.message, "red");
   }
 });
 
-// ADMIN NOTICE LIST ELEMENT
-let adminNoticeList = document.getElementById("admin-notice-list");
+// ======================================
+// AUTH STATE
+// ======================================
 
-if (!adminNoticeList && adminNoticeForm) {
-  adminNoticeList = document.createElement("div");
-  adminNoticeList.id = "admin-notice-list";
-  adminNoticeList.className = "admin-list";
-  adminNoticeForm.insertAdjacentElement("afterend", adminNoticeList);
-}
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+  isAdmin = false;
 
-// ADMIN DASHBOARD METRICS
-function setMetric(id, value) {
-  const element = document.getElementById(id);
+  if (adminPanel) adminPanel.hidden = true;
 
-  if (element) {
-    element.textContent = String(value);
+  if (loginButton) {
+    loginButton.textContent = user ? "लॉगआउट" : "विद्यार्थी लॉगिन";
+  }
+
+  if (!user) {
+    if (adminLoginButton) adminLoginButton.textContent = "Admin Login";
+    return;
+  }
+
+  try {
+    const token = await getIdTokenResult(user, true);
+    isAdmin = token.claims.admin === true;
+
+    if (isAdmin) {
+      if (adminPanel) adminPanel.hidden = false;
+      if (adminLoginButton) adminLoginButton.textContent = "Admin Dashboard";
+      await loadAdminDashboard();
+    }
+
+    await loadStudentProfile();
+
+  } catch (error) {
+    console.error("Auth error:", error);
+  }
+});
+
+// ======================================
+// STUDENT PROFILE
+// ======================================
+
+async function loadStudentProfile() {
+  if (!currentUser || !profileForm) return;
+
+  try {
+    const ref = doc(db, "profiles", currentUser.uid);
+    const snap = await getDoc(ref);
+
+    profileForm.elements.email.value = currentUser.email || "";
+
+    if (snap.exists()) {
+      const data = snap.data();
+
+      [
+        "name", "phone", "village", "tehsil",
+        "district", "course", "semester", "ncc", "nss"
+      ].forEach((key) => {
+        if (profileForm.elements[key] && data[key] !== undefined) {
+          profileForm.elements[key].value = data[key];
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Profile error:", error);
   }
 }
+
+profileForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!requireLogin()) return;
+
+  try {
+    const data = Object.fromEntries(new FormData(profileForm).entries());
+
+    data.uid = currentUser.uid;
+    data.email = currentUser.email || "";
+    data.updatedAt = serverTimestamp();
+
+    await setDoc(doc(db, "profiles", currentUser.uid), data, { merge: true });
+
+    alert("प्रोफाइल सेव हो गई।");
+  } catch (error) {
+    alert("प्रोफाइल सेव नहीं हुई: " + error.message);
+  }
+});
+
+// ======================================
+// COMPLAINT SUBMISSION
+// ======================================
+
+complaintForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!requireLogin()) return;
+
+  try {
+    const data = Object.fromEntries(new FormData(complaintForm).entries());
+
+    const complaintRef = doc(collection(db, "complaints"));
+
+    const token = "RKG-" +
+      new Date().getFullYear() + "-" +
+      complaintRef.id.slice(0, 8).toUpperCase();
+
+    await setDoc(complaintRef, {
+      ...data,
+      token,
+      uid: currentUser.uid,
+      email: currentUser.email || "",
+      status: "Pending",
+      reply: "",
+      createdAt: serverTimestamp()
+    });
+
+    message(
+      complaintTokenResult,
+      "शिकायत दर्ज हो गई। आपका टोकन नंबर: " + token,
+      "green"
+    );
+
+    complaintForm.reset();
+
+  } catch (error) {
+    message(complaintTokenResult, "शिकायत दर्ज नहीं हुई: " + error.message, "red");
+  }
+});
+
+// ======================================
+// COMPLAINT STATUS
+// ======================================
+
+complaintStatusForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const token = $("complaint-id").value.trim().toUpperCase();
+
+  if (!token) {
+    message(complaintStatusResult, "टोकन नंबर लिखें।", "red");
+    return;
+  }
+
+  try {
+    message(complaintStatusResult, "स्टेटस खोजा जा रहा है...");
+
+    const q = query(
+      collection(db, "complaints"),
+      where("token", "==", token)
+    );
+
+    const snap = await getDocs(q);
+
+    complaintStatusResult.replaceChildren();
+
+    if (snap.empty) {
+      message(complaintStatusResult, "शिकायत नहीं मिली।", "red");
+      return;
+    }
+
+    const data = snap.docs[0].data();
+
+    complaintStatusResult.append(
+      element("p", "टोकन: " + data.token),
+      element("p", "विषय: " + data.subject),
+      element("p", "स्थिति: " + data.status),
+      element("p", "Admin जवाब: " + (data.reply || "अभी जवाब नहीं आया")),
+      element("p", "तारीख: " + formatDate(data.createdAt))
+    );
+
+  } catch (error) {
+    message(complaintStatusResult, "स्टेटस नहीं मिला: " + error.message, "red");
+  }
+});
+
+// ======================================
+// STUDENT SUGGESTIONS
+// ======================================
+
+suggestionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!requireLogin()) return;
+
+  try {
+    const data = new FormData(suggestionForm);
+
+    await addDoc(collection(db, "suggestions"), {
+      suggestion: data.get("suggestion"),
+      uid: currentUser.uid,
+      email: currentUser.email || "",
+      createdAt: serverTimestamp()
+    });
+
+    alert("आपका सुझाव भेज दिया गया।");
+    suggestionForm.reset();
+
+  } catch (error) {
+    alert("सुझाव नहीं भेजा गया: " + error.message);
+  }
+});
+
+// ======================================
+// PUBLIC NOTICE BOARD
+// ======================================
+
+function renderNotices(snap) {
+  if (!noticeList) return;
+
+  noticeList.replaceChildren();
+
+  if (snap.empty) {
+    noticeList.append(element("p", "अभी कोई नोटिस उपलब्ध नहीं है।"));
+    return;
+  }
+
+  const notices = snap.docs.map((item) => ({
+    id: item.id,
+    ...item.data()
+  }));
+
+  notices.sort((a, b) => {
+    const aTime = a.createdAt?.toMillis?.() || 0;
+    const bTime = b.createdAt?.toMillis?.() || 0;
+    return bTime - aTime;
+  });
+
+  notices.forEach((notice) => {
+    const card = element("article", "", "panel");
+
+    card.append(
+      element("h3", notice.title || "नोटिस"),
+      element("p", notice.description || ""),
+      element("small", "तारीख: " + formatDate(notice.createdAt))
+    );
+
+    if (notice.link) {
+      const link = document.createElement("a");
+      link.href = notice.link;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "नोटिस / PDF देखें";
+      card.append(link);
+    }
+
+    noticeList.append(card);
+  });
+}
+
+onSnapshot(
+  collection(db, "notices"),
+  renderNotices,
+  (error) => {
+    console.error("Notice error:", error);
+    if (noticeList) noticeList.textContent = "नोटिस लोड नहीं हो पाए।";
+  }
+);
+
+// ======================================
+// ADMIN DASHBOARD
+// ======================================
 
 async function loadAdminDashboard() {
   if (!requireAdmin()) return;
 
   try {
-    const [
-      studentsSnap,
-      complaintsSnap,
-      noticesSnap,
-      suggestionsSnap
-    ] = await Promise.all([
+    const [students, complaints, notices, suggestions] = await Promise.all([
       getDocs(collection(db, "profiles")),
       getDocs(collection(db, "complaints")),
       getDocs(collection(db, "notices")),
       getDocs(collection(db, "suggestions"))
     ]);
 
-    const pendingCount = complaintsSnap.docs.filter((item) => {
-      return (item.data().status || "Pending") === "Pending";
-    }).length;
+    const pending = complaints.docs.filter(
+      (item) => (item.data().status || "Pending") === "Pending"
+    ).length;
 
-    setMetric("admin-total-students", studentsSnap.size);
-    setMetric("admin-total-complaints", complaintsSnap.size);
-    setMetric("admin-pending-complaints", pendingCount);
-    setMetric("admin-total-notices", noticesSnap.size);
-    setMetric("admin-total-suggestions", suggestionsSnap.size);
+    $("admin-total-students").textContent = students.size;
+    $("admin-total-complaints").textContent = complaints.size;
+    $("admin-pending-complaints").textContent = pending;
+    $("admin-total-notices").textContent = notices.size;
+    $("admin-total-suggestions").textContent = suggestions.size;
+
+    renderStudents(students);
+    renderSuggestions(suggestions);
 
   } catch (error) {
-    console.error("डैशबोर्ड त्रुटि:", error);
-    alert("डैशबोर्ड का डेटा लोड नहीं हुआ: " + error.message);
+    console.error("Dashboard error:", error);
+    alert("Dashboard लोड नहीं हुआ: " + error.message);
   }
 }
 
-// ADMIN STUDENTS
-async function loadAdminStudents() {
-  if (!requireAdmin() || !adminStudentList) return;
+// ======================================
+// ADMIN STUDENT MANAGEMENT
+// ======================================
 
-  adminStudentList.textContent = "विद्यार्थियों की सूची लोड हो रही है...";
+function renderStudents(snap) {
+  const container = $("admin-student-list");
+  if (!container) return;
 
-  try {
-    const snapshot = await getDocs(collection(db, "profiles"));
+  container.replaceChildren();
 
-    adminStudentList.replaceChildren();
-
-    if (snapshot.empty) {
-      adminStudentList.textContent = "अभी कोई विद्यार्थी पंजीकृत नहीं है।";
-      return;
-    }
-
-    snapshot.docs.forEach((item) => {
-      const student = item.data();
-
-      const card = document.createElement("article");
-      card.className = "panel";
-
-      card.append(
-        makeElement("h3", student.name || "विद्यार्थी"),
-        makeElement("p", "ईमेल: " + (student.email || "")),
-        makeElement("p", "मोबाइल: " + (student.phone || "")),
-        makeElement("p", "गाँव: " + (student.village || "")),
-        makeElement("p", "तहसील: " + (student.tehsil || "")),
-        makeElement("p", "कोर्स: " + (student.course || "")),
-        makeElement("p", "सेमेस्टर: " + (student.semester || ""))
-      );
-
-      adminStudentList.append(card);
-    });
-
-  } catch (error) {
-    console.error(error);
-    adminStudentList.textContent =
-      "विद्यार्थियों की सूची नहीं खुली: " + error.message;
+  if (snap.empty) {
+    container.append(element("p", "अभी विद्यार्थी नहीं हैं।"));
+    return;
   }
+
+  snap.forEach((item) => {
+    const data = item.data();
+    const card = element("div", "", "panel");
+
+    card.append(
+      element("h4", data.name || "नाम उपलब्ध नहीं"),
+      element("p", "ईमेल: " + (data.email || "")),
+      element("p", "मोबाइल: " + (data.phone || "")),
+      element("p", "गाँव: " + (data.village || "")),
+      element("p", "कोर्स: " + (data.course || "")),
+      element("p", "सेमेस्टर: " + (data.semester || ""))
+    );
+
+    container.append(card);
+  });
 }
 
-// ADMIN SUGGESTIONS
-async function loadAdminSuggestions() {
-  if (!requireAdmin() || !adminSuggestionList) return;
+// ======================================
+// ADMIN COMPLAINT MANAGEMENT
+// ======================================
 
-  adminSuggestionList.textContent = "सुझाव लोड हो रहे हैं...";
+$("admin-load-complaints")?.addEventListener("click", async () => {
+  if (!requireAdmin()) return;
+
+  const container = $("admin-complaint-list");
+  container.textContent = "शिकायतें लोड हो रही हैं...";
 
   try {
-    const snapshot = await getDocs(collection(db, "suggestions"));
+    const snap = await getDocs(collection(db, "complaints"));
+    container.replaceChildren();
 
-    adminSuggestionList.replaceChildren();
-
-    if (snapshot.empty) {
-      adminSuggestionList.textContent = "अभी कोई सुझाव नहीं आया है।";
+    if (snap.empty) {
+      container.append(element("p", "अभी कोई शिकायत नहीं है।"));
       return;
     }
 
-    snapshot.docs.forEach((item) => {
-      const suggestion = item.data();
-
-      const card = document.createElement("article");
-      card.className = "panel";
+    snap.forEach((item) => {
+      const data = item.data();
+      const card = element("div", "", "panel");
 
       card.append(
-        makeElement("h3", suggestion.subject || "विद्यार्थी सुझाव"),
-        makeElement("p", suggestion.message || suggestion.suggestion || ""),
-        makeElement("p", "ईमेल: " + (suggestion.email || ""))
+        element("h4", data.subject || "शिकायत"),
+        element("p", "टोकन: " + (data.token || item.id)),
+        element("p", "श्रेणी: " + (data.category || "")),
+        element("p", "विवरण: " + (data.details || "")),
+        element("p", "ईमेल: " + (data.email || "")),
+        element("p", "तारीख: " + formatDate(data.createdAt))
       );
 
-      adminSuggestionList.append(card);
-    });
+      const status = document.createElement("select");
 
-  } catch (error) {
-    console.error(error);
-    adminSuggestionList.textContent =
-      "सुझाव लोड नहीं हुए: " + error.message;
-  }
-}
+      [
+        ["Pending", "लंबित"],
+        ["In Progress", "कार्यवाही जारी"],
+        ["Resolved", "समाधान हो गया"]
+      ].forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        status.append(option);
+      });
 
-// ADMIN NOTICE MANAGEMENT
-async function loadAdminNotices() {
-  if (!requireAdmin() || !adminNoticeList) return;
+      status.value = data.status || "Pending";
 
-  adminNoticeList.textContent = "नोटिस लोड हो रहे हैं...";
+      const reply = document.createElement("textarea");
+      reply.placeholder = "Admin का जवाब लिखें";
+      reply.value = data.reply || "";
 
-  try {
-    const snapshot = await getDocs(collection(db, "notices"));
+      const save = element("button", "अपडेट सेव करें", "btn btn-primary");
+      save.type = "button";
 
-    adminNoticeList.replaceChildren();
+      save.addEventListener("click", async () => {
+        if (!requireAdmin()) return;
 
-    if (snapshot.empty) {
-      adminNoticeList.textContent = "अभी कोई नोटिस प्रकाशित नहीं हुआ है।";
-      return;
-    }
+        try {
+          await updateDoc(doc(db, "complaints", item.id), {
+            status: status.value,
+            reply: reply.value.trim(),
+            updatedAt: serverTimestamp()
+          });
 
-    snapshot.docs.forEach((item) => {
-      const notice = item.data();
+          alert("शिकायत अपडेट हो गई।");
+          await loadAdminDashboard();
 
-      const card = document.createElement("article");
-      card.className = "panel";
-
-      card.append(
-        makeElement("h3", notice.title || "नोटिस"),
-        makeElement("p", notice.description || ""),
-        makeElement("p", notice.link || "")
-      );
-
-      const editButton = createAdminButton(
-        "संपादित करें",
-        "btn btn-primary",
-        async () => {
-          if (!requireAdmin()) return;
-
-          const newTitle = prompt("नोटिस का नया शीर्षक:", notice.title || "");
-          if (newTitle === null) return;
-
-          const newDescription = prompt(
-            "नोटिस का नया विवरण:",
-            notice.description || ""
-          );
-          if (newDescription === null) return;
-
-          const newLink = prompt(
-            "PDF या वेबसाइट लिंक:",
-            notice.link || ""
-          );
-          if (newLink === null) return;
-
-          try {
-            let safeLink = newLink.trim();
-
-            if (safeLink) {
-              const url = new URL(safeLink);
-
-              if (
-                url.protocol !== "https:" &&
-                url.protocol !== "http:"
-              ) {
-                throw new Error("सही वेबसाइट या PDF लिंक डालें।");
-              }
-
-              safeLink = url.href;
-            }
-
-            await updateDoc(doc(db, "notices", item.id), {
-              title: newTitle.trim(),
-              description: newDescription.trim(),
-              link: safeLink,
-              updatedAt: serverTimestamp()
-            });
-
-            alert("नोटिस अपडेट हो गया।");
-            await loadAdminNotices();
-            await loadAdminDashboard();
-
-          } catch (error) {
-            alert("नोटिस अपडेट नहीं हुआ: " + error.message);
-          }
+        } catch (error) {
+          alert("अपडेट नहीं हुआ: " + error.message);
         }
+      });
+
+      card.append(
+        element("p", "स्थिति"),
+        status,
+        element("p", "जवाब"),
+        reply,
+        save
       );
 
-      const deleteButton = createAdminButton(
-        "नोटिस हटाएँ",
-        "btn btn-light",
-        async () => {
-          if (!requireAdmin()) return;
-
-          if (!confirm("क्या आप यह नोटिस हटाना चाहते हैं?")) return;
-
-          try {
-            await deleteDoc(doc(db, "notices", item.id));
-
-            alert("नोटिस हटा दिया गया।");
-            await loadAdminNotices();
-            await loadAdminDashboard();
-
-          } catch (error) {
-            alert("नोटिस नहीं हटा: " + error.message);
-          }
-        }
-      );
-
-      card.append(editButton, deleteButton);
-      adminNoticeList.append(card);
+      container.append(card);
     });
 
   } catch (error) {
-    console.error(error);
-    adminNoticeList.textContent =
-      "नोटिस लोड नहीं हुए: " + error.message;
-  }
-}
-
-// AUTH STATE AND ADMIN CHECK
-onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
-  isAdmin = false;
-
-  if (adminPanel) {
-    adminPanel.hidden = true;
-  }
-
-  if (user) {
-    if (loginButton) {
-      loginButton.textContent = "लॉगिन सफल / लॉगआउट";
-    }
-
-    try {
-      const tokenResult = await getIdTokenResult(user, true);
-
-      isAdmin = tokenResult.claims.admin === true;
-
-      await loadProfile(user);
-
-      if (isAdmin && adminPanel) {
-        adminPanel.hidden = false;
-
-        await loadAdminDashboard();
-        await loadAdminStudents();
-        await loadAdminSuggestions();
-        await loadAdminNotices();
-      }
-
-    } catch (error) {
-      console.error("अकाउंट जाँच त्रुटि:", error);
-    }
-
-  } else {
-    if (loginButton) {
-      loginButton.textContent = "विद्यार्थी लॉगिन";
-    }
-
-    if (profileForm) {
-      profileForm.reset();
-    }
-
-    if (adminComplaintList) {
-      adminComplaintList.textContent = "एडमिन लॉगिन जरूरी है।";
-    }
-
-    if (adminStudentList) {
-      adminStudentList.textContent = "एडमिन लॉगिन जरूरी है।";
-    }
-
-    if (adminSuggestionList) {
-      adminSuggestionList.textContent = "एडमिन लॉगिन जरूरी है।";
-    }
+    container.textContent = "शिकायतें लोड नहीं हुईं: " + error.message;
   }
 });
 
-// SAVE PROFILE
-if (profileForm) {
-  profileForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+// ======================================
+// ADMIN NOTICE PUBLISH
+// ======================================
 
-    if (!currentUser) {
-      alert("पहले लॉगिन करें।");
+adminNoticeForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!requireAdmin()) return;
+
+  try {
+    const data = new FormData(adminNoticeForm);
+
+    const title = String(data.get("title") || "").trim();
+    const description = String(data.get("description") || "").trim();
+    const link = String(data.get("link") || "").trim();
+
+    if (!title || !description) {
+      message(adminNoticeMessage, "शीर्षक और विवरण जरूरी हैं।", "red");
       return;
     }
 
-    try {
-      const student = {
-        ...getFormData(profileForm),
-        uid: currentUser.uid,
-        email: currentUser.email || "",
-        updatedAt: serverTimestamp()
-      };
-
-      await setDoc(
-        doc(db, "profiles", currentUser.uid),
-        student,
-        { merge: true }
-      );
-
-      alert("आपकी प्रोफाइल सेव हो गई।");
-
-    } catch (error) {
-      alert("प्रोफाइल सेव नहीं हुई: " + error.message);
-    }
-  });
-}
-
-// COMPLAINT SUBMISSION
-if (complaintForm) {
-  complaintForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    if (!currentUser) {
-      alert("शिकायत के लिए पहले लॉगिन करें।");
+    if (link && !/^https:\/\//i.test(link)) {
+      message(adminNoticeMessage, "HTTPS वाला सही लिंक डालें।", "red");
       return;
     }
 
-    try {
-      const complaintRef = doc(collection(db, "complaints"));
-      const token = "RKG-2026-" + complaintRef.id.toUpperCase();
+    await addDoc(collection(db, "notices"), {
+      title,
+      description,
+      link,
+      createdAt: serverTimestamp(),
+      createdBy: currentUser.uid
+    });
 
-      const complaint = {
-        ...getFormData(complaintForm),
-        uid: currentUser.uid,
-        email: currentUser.email || "",
-        token,
-        status: "Pending",
-        reply: "",
-        createdAt: serverTimestamp()
-      };
+    message(adminNoticeMessage, "नोटिस प्रकाशित हो गया।", "green");
+    adminNoticeForm.reset();
 
-      await setDoc(complaintRef, complaint);
+    await loadAdminDashboard();
 
-      showMessage(tokenResult, "आपका शिकायत टोकन: " + token);
+  } catch (error) {
+    message(adminNoticeMessage, "नोटिस प्रकाशित नहीं हुआ: " + error.message, "red");
+  }
+});
 
-      alert(
-        "शिकायत दर्ज हो गई। अपना टोकन सुरक्षित रखें:\n" + token
-      );
+// ======================================
+// ADMIN SUGGESTIONS
+// ======================================
 
-      complaintForm.reset();
+function renderSuggestions(snap) {
+  const container = $("admin-suggestion-list");
+  if (!container) return;
 
-    } catch (error) {
-      console.error(error);
-      alert("शिकायत दर्ज नहीं हुई: " + error.message);
-    }
+  container.replaceChildren();
+
+  if (snap.empty) {
+    container.append(element("p", "अभी कोई सुझाव नहीं आया है।"));
+    return;
+  }
+
+  snap.forEach((item) => {
+    const data = item.data();
+    const card = element("div", "", "panel");
+
+    card.append(
+      element("p", data.suggestion || ""),
+      element("small", "ईमेल: " + (data.email || "")),
+      element("p", "तारीख: " + formatDate(data.createdAt))
+    );
+
+    container.append(card);
   });
 }
 
-// COMPLAINT STATUS
-if (statusForm) {
-  statusForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    if (!currentUser) {
-      alert("स्टेटस देखने के लिए पहले लॉगिन करें।");
-      return;
-    }
-
-    const tokenInput = document.getElementById("complaint-id");
-
-    if (!tokenInput || !statusResult) return;
-
-    const token = tokenInput.value.trim().toUpperCase();
-
-    statusResult.textContent = "शिकायत खोजी जा रही है...";
-
-    try {
-      const complaintsQuery = query(
-        collection(db, "complaints"),
-        where("uid", "==", currentUser.uid),
-        where("token", "==", token)
-      );
-
-      const snapshot = await getDocs(complaintsQuery);
-
-      if (snapshot.empty) {
-        statusResult.textContent = "इस अकाउंट में यह टोकन नहीं मिला।";
-        return;
-      }
-
-      const complaint = snapshot.docs[0].data();
-
-      statusResult.textContent =
-        "टोकन: " + complaint.token +
-        " | स्थिति: " + complaint.status +
-        " | एडमिन का जवाब: " +
-        (complaint.reply || "अभी कोई जवाब नहीं आया।");
-
-    } catch (error) {
-      console.error(error);
-      statusResult.textContent =
-        "स्टेटस नहीं मिल पाया: " + error.message;
-    }
-  });
-}
-
-// SUGGESTIONS
-if (suggestionForm) {
-  suggestionForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    if (!currentUser) {
-      alert("सुझाव देने के लिए पहले लॉगिन करें।");
-      return;
-    }
-
-    try {
-      const suggestion = {
-        ...getFormData(suggestionForm),
-        uid: currentUser.uid,
-        email: currentUser.email || "",
-        createdAt: serverTimestamp()
-      };
-
-      await addDoc(collection(db, "suggestions"), suggestion);
-
-      alert("आपका सुझाव सेव हो गया। धन्यवाद!");
-      suggestionForm.reset();
-
-    } catch (error) {
-      alert("सुझाव सेव नहीं हुआ: " + error.message);
-    }
-  });
-}
-
-// NOTICE BOARD - LIVE UPDATES
-if (noticeList) {
-  onSnapshot(
-    collection(db, "notices"),
-    (snapshot) => {
-      noticeList.replaceChildren();
-
-      if (snapshot.empty) {
-        noticeList.append(
-          makeElement("p", "अभी कोई नया नोटिस उपलब्ध नहीं है।")
-        );
-        return;
-      }
-
-      const notices = snapshot.docs.map((item) => ({
-        id: item.id,
-        ...item.data()
-      }));
-
-      notices.sort((a, b) => {
-        const aTime = a.createdAt?.toMillis?.() || 0;
-        const bTime = b.createdAt?.toMillis?.() || 0;
-        return bTime - aTime;
-      });
-
-      notices.forEach((notice) => {
-        const card = document.createElement("article");
-        card.className = "panel";
-
-        card.append(
-          makeElement("h3", notice.title || "नोटिस"),
-          makeElement("p", notice.description || "")
-        );
-
-        const rawLink = notice.link;
-
-        if (typeof rawLink === "string" && rawLink.trim()) {
-          try {
-            const url = new URL(rawLink.trim());
-
-            if (
-              url.protocol === "https:" ||
-              url.protocol === "http:"
-            ) {
-              const link = makeElement("a", "नोटिस / PDF देखें");
-
-              link.href = url.href;
-              link.target = "_blank";
-              link.rel = "noopener noreferrer";
-              link.style.display = "inline-block";
-              link.style.marginTop = "12px";
-              link.style.color = "#0b57d0";
-              link.style.fontWeight = "bold";
-
-              card.append(link);
-            }
-          } catch (error) {
-            console.warn("गलत नोटिस लिंक:", rawLink, error);
-
-            card.append(
-              makeElement("p", "नोटिस लिंक सही नहीं है।")
-            );
-          }
-        }
-
-        noticeList.append(card);
-      });
-    },
-    (error) => {
-      console.error("नोटिस लोड त्रुटि:", error);
-      noticeList.textContent = "नोटिस लोड नहीं हो सके।";
-    }
-  );
-}
-
-// ADMIN - NOTICE PUBLISH
-if (adminNoticeForm) {
-  adminNoticeForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    if (!requireAdmin()) return;
-
-    try {
-      const notice = {
-        ...g
+console.log("TEAM RKG Portal Loaded Successfully"
