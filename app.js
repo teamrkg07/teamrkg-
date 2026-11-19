@@ -83,6 +83,74 @@ function requireAdmin() {
 }
 
 // ======================================
+// STUDENT PROFILE ADMISSION TYPE DISPLAY
+// ======================================
+
+// विद्यार्थी की प्रोफाइल में प्रवेश प्रकार दिखाने के लिए
+// यह फील्ड केवल देखने के लिए है। विद्यार्थी इसे नहीं बदल सकता।
+
+let admissionTypeDisplay = null;
+
+if (profileForm) {
+  const admissionBox = document.createElement("div");
+  admissionBox.style.cssText = `
+    margin:15px 0;
+    padding:14px;
+    background:#f1f5f9;
+    border-radius:10px;
+    border:1px solid #d5deea;
+  `;
+
+  const admissionLabel = element(
+    "label",
+    "प्रवेश प्रकार (Admission Type)"
+  );
+
+  admissionLabel.style.cssText = `
+    display:block;
+    font-weight:bold;
+    margin-bottom:7px;
+    color:#102544;
+  `;
+
+  admissionTypeDisplay = document.createElement("input");
+  admissionTypeDisplay.type = "text";
+  admissionTypeDisplay.id = "admission-type-display";
+  admissionTypeDisplay.value = "Admin द्वारा निर्धारित नहीं";
+  admissionTypeDisplay.readOnly = true;
+
+  admissionTypeDisplay.style.cssText = `
+    width:100%;
+    padding:11px;
+    box-sizing:border-box;
+    border:1px solid #cbd5e1;
+    border-radius:7px;
+    background:#fff;
+    color:#102544;
+    font-weight:bold;
+  `;
+
+  const admissionNote = element(
+    "small",
+    "प्रवेश प्रकार में बदलाव केवल Admin द्वारा किया जाएगा।"
+  );
+
+  admissionNote.style.cssText = `
+    display:block;
+    margin-top:7px;
+    color:#64748b;
+  `;
+
+  admissionBox.append(
+    admissionLabel,
+    admissionTypeDisplay,
+    admissionNote
+  );
+
+  profileForm.append(admissionBox);
+}
+
+// ======================================
 // STUDENT LOGIN WINDOW
 // ======================================
 
@@ -315,6 +383,11 @@ onAuthStateChanged(auth, async (user) => {
 
   if (!user) {
     if (adminLoginButton) adminLoginButton.textContent = "Admin Login";
+
+    if (admissionTypeDisplay) {
+      admissionTypeDisplay.value = "Admin द्वारा निर्धारित नहीं";
+    }
+
     return;
   }
 
@@ -326,6 +399,8 @@ onAuthStateChanged(auth, async (user) => {
       if (adminPanel) adminPanel.hidden = false;
       if (adminLoginButton) adminLoginButton.textContent = "Admin Dashboard";
       await loadAdminDashboard();
+    } else {
+      if (adminLoginButton) adminLoginButton.textContent = "Admin Login";
     }
 
     await loadStudentProfile();
@@ -359,7 +434,22 @@ async function loadStudentProfile() {
           profileForm.elements[key].value = data[key];
         }
       });
+
+      if (admissionTypeDisplay) {
+        admissionTypeDisplay.value =
+          data.admissionType === "Regular"
+            ? "नियमित (Regular)"
+            : data.admissionType === "Private"
+              ? "निजी (Private)"
+              : "Admin द्वारा निर्धारित नहीं";
+      }
+
+    } else {
+      if (admissionTypeDisplay) {
+        admissionTypeDisplay.value = "Admin द्वारा निर्धारित नहीं";
+      }
     }
+
   } catch (error) {
     console.error("Profile error:", error);
   }
@@ -376,6 +466,9 @@ profileForm?.addEventListener("submit", async (event) => {
     data.uid = currentUser.uid;
     data.email = currentUser.email || "";
     data.updatedAt = serverTimestamp();
+
+    // admissionType इस फॉर्म से सेव नहीं होगा।
+    // इसे केवल Admin ही निर्धारित करेगा।
 
     await setDoc(doc(db, "profiles", currentUser.uid), data, { merge: true });
 
@@ -614,171 +707,89 @@ function renderStudents(snap) {
       element("p", "मोबाइल: " + (data.phone || "")),
       element("p", "गाँव: " + (data.village || "")),
       element("p", "कोर्स: " + (data.course || "")),
-      element("p", "सेमेस्टर: " + (data.semester || ""))
+      element("p", "सेमेस्टर: " + (data.semester || "")),
+      element(
+        "p",
+        "वर्तमान प्रवेश प्रकार: " +
+        (
+          data.admissionType === "Regular"
+            ? "नियमित (Regular)"
+            : data.admissionType === "Private"
+              ? "निजी (Private)"
+              : "निर्धारित नहीं"
+        )
+      )
     );
 
-    container.append(card);
-  });
-}
+    // Admin के लिए Regular / Private चयन
 
-// ======================================
-// ADMIN COMPLAINT MANAGEMENT
-// ======================================
-
-$("admin-load-complaints")?.addEventListener("click", async () => {
-  if (!requireAdmin()) return;
-
-  const container = $("admin-complaint-list");
-  container.textContent = "शिकायतें लोड हो रही हैं...";
-
-  try {
-    const snap = await getDocs(collection(db, "complaints"));
-    container.replaceChildren();
-
-    if (snap.empty) {
-      container.append(element("p", "अभी कोई शिकायत नहीं है।"));
-      return;
-    }
-
-    snap.forEach((item) => {
-      const data = item.data();
-      const card = element("div", "", "panel");
-
-      card.append(
-        element("h4", data.subject || "शिकायत"),
-        element("p", "टोकन: " + (data.token || item.id)),
-        element("p", "श्रेणी: " + (data.category || "")),
-        element("p", "विवरण: " + (data.details || "")),
-        element("p", "ईमेल: " + (data.email || "")),
-        element("p", "तारीख: " + formatDate(data.createdAt))
-      );
-
-      const status = document.createElement("select");
-
-      [
-        ["Pending", "लंबित"],
-        ["In Progress", "कार्यवाही जारी"],
-        ["Resolved", "समाधान हो गया"]
-      ].forEach(([value, label]) => {
-        const option = document.createElement("option");
-        option.value = value;
-        option.textContent = label;
-        status.append(option);
-      });
-
-      status.value = data.status || "Pending";
-
-      const reply = document.createElement("textarea");
-      reply.placeholder = "Admin का जवाब लिखें";
-      reply.value = data.reply || "";
-
-      const save = element("button", "अपडेट सेव करें", "btn btn-primary");
-      save.type = "button";
-
-      save.addEventListener("click", async () => {
-        if (!requireAdmin()) return;
-
-        try {
-          await updateDoc(doc(db, "complaints", item.id), {
-            status: status.value,
-            reply: reply.value.trim(),
-            updatedAt: serverTimestamp()
-          });
-
-          alert("शिकायत अपडेट हो गई।");
-          await loadAdminDashboard();
-
-        } catch (error) {
-          alert("अपडेट नहीं हुआ: " + error.message);
-        }
-      });
-
-      card.append(
-        element("p", "स्थिति"),
-        status,
-        element("p", "जवाब"),
-        reply,
-        save
-      );
-
-      container.append(card);
-    });
-
-  } catch (error) {
-    container.textContent = "शिकायतें लोड नहीं हुईं: " + error.message;
-  }
-});
-
-// ======================================
-// ADMIN NOTICE PUBLISH
-// ======================================
-
-adminNoticeForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  if (!requireAdmin()) return;
-
-  try {
-    const data = new FormData(adminNoticeForm);
-
-    const title = String(data.get("title") || "").trim();
-    const description = String(data.get("description") || "").trim();
-    const link = String(data.get("link") || "").trim();
-
-    if (!title || !description) {
-      message(adminNoticeMessage, "शीर्षक और विवरण जरूरी हैं।", "red");
-      return;
-    }
-
-    if (link && !/^https:\/\//i.test(link)) {
-      message(adminNoticeMessage, "HTTPS वाला सही लिंक डालें।", "red");
-      return;
-    }
-
-    await addDoc(collection(db, "notices"), {
-      title,
-      description,
-      link,
-      createdAt: serverTimestamp(),
-      createdBy: currentUser.uid
-    });
-
-    message(adminNoticeMessage, "नोटिस प्रकाशित हो गया।", "green");
-    adminNoticeForm.reset();
-
-    await loadAdminDashboard();
-
-  } catch (error) {
-    message(adminNoticeMessage, "नोटिस प्रकाशित नहीं हुआ: " + error.message, "red");
-  }
-});
-
-// ======================================
-// ADMIN SUGGESTIONS
-// ======================================
-
-function renderSuggestions(snap) {
-  const container = $("admin-suggestion-list");
-  if (!container) return;
-
-  container.replaceChildren();
-
-  if (snap.empty) {
-    container.append(element("p", "अभी कोई सुझाव नहीं आया है।"));
-    return;
-  }
-
-  snap.forEach((item) => {
-    const data = item.data();
-    const card = element("div", "", "panel");
-
-    card.append(
-      element("p", data.suggestion || ""),
-      element("small", "ईमेल: " + (data.email || "")),
-      element("p", "तारीख: " + formatDate(data.createdAt))
+    const admissionLabel = element(
+      "label",
+      "प्रवेश प्रकार निर्धारित करें:"
     );
 
-    container.append(card);
-  });
-}
-console.log("TEAM RKG Portal Loaded Successfully");
+    admissionLabel.style.cssText = `
+      display:block;
+      margin:12px 0 6px;
+      font-weight:bold;
+    `;
+
+    const admissionSelect = document.createElement("select");
+    admissionSelect.style.cssText = `
+      width:100%;
+      padding:11px;
+      border-radius:7px;
+      border:1px solid #cbd5e1;
+      margin-bottom:10px;
+    `;
+
+    const options = [
+      ["", "प्रवेश प्रकार चुनें"],
+      ["Regular", "नियमित (Regular)"],
+      ["Private", "निजी (Private)"]
+    ];
+
+    options.forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      admissionSelect.append(option);
+    });
+
+    admissionSelect.value = data.admissionType || "";
+
+    const admissionSave = element(
+      "button",
+      "प्रवेश प्रकार सेव करें",
+      "btn btn-primary"
+    );
+
+    admissionSave.type = "button";
+
+    admissionSave.addEventListener("click", async () => {
+      if (!requireAdmin()) return;
+
+      const selectedType = admissionSelect.value;
+
+      if (!selectedType) {
+        alert("पहले Regular या Private चुनें।");
+        return;
+      }
+
+      try {
+        admissionSave.disabled = true;
+        admissionSave.textContent = "सेव हो रहा है...";
+
+        await updateDoc(doc(db, "profiles", item.id), {
+          admissionType: selectedType,
+          updatedAt: serverTimestamp()
+        });
+
+        alert("विद्यार्थी का प्रवेश प्रकार सेव हो गया।");
+
+        await loadAdminDashboard();
+
+      } catch (error) {
+        alert("प्रवेश प्रकार सेव नहीं हुआ: " + error.message);
+        admissionSave.disabled = false;
+        admissionSave.textContent = "प्रवेश प्रकार सेव करें"
