@@ -792,4 +792,204 @@ function renderStudents(snap) {
       } catch (error) {
         alert("प्रवेश प्रकार सेव नहीं हुआ: " + error.message);
         admissionSave.disabled = false;
-        admissionSave.textContent = "प्रवेश प्रकार सेव करें"
+        admissionSave.textContent = "प्रवेश प्रकार सेव करें"      }
+    });
+
+    card.append(admissionLabel, admissionSelect, admissionSave);
+    container.append(card);
+  });
+}
+
+// ======================================
+// ADMIN SUGGESTIONS
+// ======================================
+
+function renderSuggestions(snap) {
+  const container = $("admin-suggestion-list");
+  if (!container) return;
+
+  container.replaceChildren();
+
+  if (snap.empty) {
+    container.append(element("p", "अभी कोई सुझाव नहीं है।"));
+    return;
+  }
+
+  snap.forEach((item) => {
+    const data = item.data();
+    const card = element("div", "", "panel");
+
+    card.append(
+      element("p", data.suggestion || "सुझाव उपलब्ध नहीं"),
+      element("small", "ईमेल: " + (data.email || "")),
+      element("p", "तारीख: " + formatDate(data.createdAt))
+    );
+
+    container.append(card);
+  });
+}
+
+// ======================================
+// ADMIN COMPLAINT MANAGEMENT
+// ======================================
+
+async function loadAdminComplaints() {
+  if (!requireAdmin()) return;
+
+  const container = $("admin-complaint-list");
+  if (!container) return;
+
+  container.textContent = "शिकायतें लोड हो रही हैं...";
+
+  try {
+    const snap = await getDocs(collection(db, "complaints"));
+    container.replaceChildren();
+
+    if (snap.empty) {
+      container.append(element("p", "अभी कोई शिकायत नहीं है।"));
+      return;
+    }
+
+    snap.forEach((item) => {
+      const data = item.data();
+      const card = element("div", "", "panel");
+
+      card.append(
+        element("h4", data.subject || "शिकायत"),
+        element("p", "टोकन: " + (data.token || "")),
+        element("p", "ईमेल: " + (data.email || "")),
+        element("p", "विवरण: " + (data.description || data.message || "")),
+        element("p", "स्थिति: " + (data.status || "Pending"))
+      );
+
+      const status = document.createElement("select");
+
+      [
+        ["Pending", "लंबित"],
+        ["In Progress", "कार्यवाही जारी"],
+        ["Resolved", "समाधान हो गया"]
+      ].forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        status.append(option);
+      });
+
+      status.value = data.status || "Pending";
+
+      const reply = document.createElement("textarea");
+      reply.placeholder = "Admin जवाब लिखें...";
+      reply.value = data.reply || "";
+      reply.style.cssText = "width:100%;padding:10px;margin:10px 0;";
+
+      const save = element(
+        "button",
+        "स्थिति और जवाब सेव करें",
+        "btn btn-primary"
+      );
+
+      save.type = "button";
+
+      save.addEventListener("click", async () => {
+        if (!requireAdmin()) return;
+
+        try {
+          save.disabled = true;
+          save.textContent = "सेव हो रहा है...";
+
+          await updateDoc(doc(db, "complaints", item.id), {
+            status: status.value,
+            reply: reply.value.trim(),
+            updatedAt: serverTimestamp()
+          });
+
+          alert("शिकायत अपडेट हो गई।");
+          await loadAdminDashboard();
+          await loadAdminComplaints();
+
+        } catch (error) {
+          alert("अपडेट नहीं हुआ: " + error.message);
+          save.disabled = false;
+          save.textContent = "स्थिति और जवाब सेव करें";
+        }
+      });
+
+      card.append(status, reply, save);
+      container.append(card);
+    });
+
+  } catch (error) {
+    container.textContent = "शिकायतें लोड नहीं हुईं: " + error.message;
+  }
+}
+
+$("admin-load-complaints")?.addEventListener(
+  "click",
+  loadAdminComplaints
+);
+
+// ======================================
+// ADMIN NOTICE ADD
+// ======================================
+
+adminNoticeForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!requireAdmin()) return;
+
+  try {
+    const data = new FormData(adminNoticeForm);
+
+    const title = String(data.get("title") || "").trim();
+    const description = String(data.get("description") || "").trim();
+    const link = String(data.get("link") || "").trim();
+
+    if (!title) {
+      message(adminNoticeMessage, "नोटिस का शीर्षक लिखें।", "red");
+      return;
+    }
+
+    await addDoc(collection(db, "notices"), {
+      title,
+      description,
+      link,
+      createdAt: serverTimestamp()
+    });
+
+    message(
+      adminNoticeMessage,
+      "नोटिस सफलतापूर्वक प्रकाशित हो गया।",
+      "green"
+    );
+
+    adminNoticeForm.reset();
+    await loadAdminDashboard();
+
+  } catch (error) {
+    message(
+      adminNoticeMessage,
+      "नोटिस प्रकाशित नहीं हुआ: " + error.message,
+      "red"
+    );
+  }
+});
+
+// ======================================
+// PAGE NAVIGATION
+// ======================================
+
+document.querySelectorAll('a[href^="#"]').forEach((link) => {
+  link.addEventListener("click", () => {
+    const target = document.querySelector(link.getAttribute("href"));
+
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth" });
+    }
+  });
+});
+
+// ======================================
+// TEAM RKG APP READY
+// ======================================
+
+console.log("TEAM RKG App Successfully Loaded");
