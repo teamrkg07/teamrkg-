@@ -781,5 +781,4 @@ function renderSuggestions(snap) {
     container.append(card);
   });
 }
-
-console.log("TEAM RKG Portal Loaded Successfully"
+console.log("TEAM RKG Portal Loaded Successfully");
