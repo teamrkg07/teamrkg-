@@ -1343,7 +1343,7 @@ loadPublicPracticals();
 // PAGE NAVIGATION
 // ===============================
 
-document.querySelectorAll(".nav-links a").forEach(link => {
+document.querySelectorAll(".nav a").forEach(link => {
   link.addEventListener("click", function (e) {
     const target = this.getAttribute("href");
 
@@ -1361,7 +1361,7 @@ document.querySelectorAll(".nav-links a").forEach(link => {
         page.scrollIntoView({ behavior: "smooth" });
       }
 
-      document.querySelectorAll(".nav-links a").forEach(a => {
+      document.querySelectorAll(".nav a").forEach(a => {
         a.classList.remove("active");
       });
 
