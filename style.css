@@ -569,6 +569,103 @@ footer {
   }
 }
 
+
+/* ================================
+   TEAM RKG - PRACTICAL DESIGN
+================================ */
+
+#practical {
+  padding: 22px 15px;
+}
+
+#practical h2 {
+  text-align: center;
+  color: #d6a943;
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+#practical .practical-subtitle {
+  text-align: center;
+  color: #cbd5e1;
+  margin-bottom: 22px;
+}
+
+#practical-search {
+  width: 100%;
+  max-width: 600px;
+  display: block;
+  margin: 18px auto 25px;
+  padding: 14px 18px;
+  border: 1px solid #d6a943;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #102544;
+  font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+#practical-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+
+#practical-list > div {
+  background: linear-gradient(145deg, #172f50, #10213a);
+  border: 1px solid rgba(214, 169, 67, 0.5);
+  border-radius: 16px;
+  padding: 18px;
+  color: #ffffff;
+  box-shadow: 0 5px 16px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#practical-list > div:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 9px 22px rgba(0,0,0,0.3);
+}
+
+#practical-list h3 {
+  color: #f0c66b;
+  font-size: 19px;
+  margin: 0 0 12px;
+}
+
+#practical-list p {
+  color: #e2e8f0;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+#practical-list a {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 10px 17px;
+  border-radius: 9px;
+  background: #d6a943;
+  color: #102544;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+#practical-list a:hover {
+  background: #f3cf78;
+}
+
+@media (max-width: 600px) {
+  #practical {
+    padding: 15px 10px;
+  }
+
+  #practical-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* SMALL MOBILE */
 
 @media (max-width: 380px) {
@@ -584,3 +681,5 @@ footer {
     padding: 17px;
   }
 }
+
+  
