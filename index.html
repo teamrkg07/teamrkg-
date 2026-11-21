@@ -72,6 +72,7 @@
 <nav class="nav">
   <a href="#home">होम</a>
   <a href="#notices">नोटिस बोर्ड</a>
+  <a href="#practical">प्रैक्टिकल</a>
   <a href="#profile">विद्यार्थी प्रोफाइल</a>
   <a href="#complaints">शिकायत</a>
   <a href="#complaint-status">शिकायत स्टेटस</a>
@@ -93,6 +94,25 @@
 <section id="notices" class="section">
   <h2>नोटिस बोर्ड</h2>
   <div id="notice-list"><p>नोटिस जल्द उपलब्ध होंगे।</p></div>
+</section>
+
+<!-- PRACTICAL SECTION -->
+<section id="practical" class="section">
+  <h2>प्रैक्टिकल PDF</h2>
+  <p>अपने कोर्स, वर्ष, सेमेस्टर और विषय के अनुसार प्रैक्टिकल PDF देखें।</p>
+
+  <div class="panel practical-tools">
+    <label for="practical-search">PDF या विषय खोजें</label>
+    <input
+      type="search"
+      id="practical-search"
+      placeholder="कोर्स, विषय या PDF का नाम लिखें..."
+    >
+  </div>
+
+  <div id="practical-list" class="practical-list" aria-live="polite">
+    <p>प्रैक्टिकल की सामग्री लोड हो रही है...</p>
+  </div>
 </section>
 
 <section id="profile" class="section">
@@ -239,6 +259,7 @@
       <a href="#admin-students">विद्यार्थी प्रबंधन</a>
       <a href="#admin-complaints">शिकायत प्रबंधन</a>
       <a href="#admin-notices">नोटिस प्रबंधन</a>
+      <a href="#admin-practicals">प्रैक्टिकल प्रबंधन</a>
       <a href="#admin-suggestions">सुझाव प्रबंधन</a>
       <a href="#admin-management">Admin Management</a>
     </aside>
@@ -281,6 +302,63 @@
           <button class="btn btn-primary" type="submit">नोटिस प्रकाशित करें</button>
         </form>
         <div id="admin-notice-message" aria-live="polite"></div>
+      </div>
+
+      <!-- ADMIN PRACTICAL MANAGEMENT -->
+      <div id="admin-practicals" class="panel">
+        <h3>प्रैक्टिकल PDF प्रबंधन</h3>
+        <p>यहाँ से कोर्स, वर्ष, सेमेस्टर, विषय और PDF लिंक जोड़े या बदले जा सकेंगे।</p>
+
+        <form id="admin-practical-form" class="form-grid">
+          <input type="hidden" id="practical-edit-id" name="editId">
+
+          <label>कोर्स का नाम
+            <input type="text" name="course" placeholder="जैसे BA, BSc, BCom, BBA, BCA, MA, MSc" required>
+          </label>
+
+          <label>वर्ष
+            <select name="year" required>
+              <option value="">वर्ष चुनें</option>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+            </select>
+          </label>
+
+          <label>सेमेस्टर
+            <select name="semester" required>
+              <option value="">सेमेस्टर चुनें</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+            </select>
+          </label>
+
+          <label>विषय
+            <input type="text" name="subject" placeholder="जैसे Chemistry, Geography, Physics" required>
+          </label>
+
+          <label>PDF का नाम
+            <input type="text" name="title" placeholder="प्रैक्टिकल PDF का नाम" required>
+          </label>
+
+          <label>Google Drive PDF लिंक
+            <input type="url" name="driveUrl" placeholder="https://drive.google.com/..." required>
+          </label>
+
+          <button class="btn btn-primary" type="submit" id="practical-save-button">PDF जोड़ें</button>
+          <button class="btn btn-light" type="button" id="practical-cancel-edit" hidden>बदलाव रद्द करें</button>
+        </form>
+
+        <div id="admin-practical-message" aria-live="polite"></div>
+
+        <h3>जोड़ी गई Practical PDFs</h3>
+        <div id="admin-practical-list">
+          <p>प्रैक्टिकल PDF की सूची यहाँ दिखाई देगी।</p>
+        </div>
       </div>
 
       <div id="admin-suggestions" class="panel">
@@ -361,6 +439,6 @@
   }
 </script>
 
-<script type="module" src="app.js?v=7"></script>
+<script type="module" src="app.js?v=8"></script>
 </body>
 </html>
