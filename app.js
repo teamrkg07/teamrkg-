@@ -1,4 +1,3 @@
-
 import { auth, db } from "./firebase.js";
 
 import {
@@ -17,6 +16,7 @@ import {
   addDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   serverTimestamp,
@@ -85,9 +85,6 @@ function requireAdmin() {
 // ======================================
 // STUDENT PROFILE ADMISSION TYPE DISPLAY
 // ======================================
-
-// विद्यार्थी की प्रोफाइल में प्रवेश प्रकार दिखाने के लिए
-// यह फील्ड केवल देखने के लिए है। विद्यार्थी इसे नहीं बदल सकता।
 
 let admissionTypeDisplay = null;
 
@@ -467,9 +464,6 @@ profileForm?.addEventListener("submit", async (event) => {
     data.email = currentUser.email || "";
     data.updatedAt = serverTimestamp();
 
-    // admissionType इस फॉर्म से सेव नहीं होगा।
-    // इसे केवल Admin ही निर्धारित करेगा।
-
     await setDoc(doc(db, "profiles", currentUser.uid), data, { merge: true });
 
     alert("प्रोफाइल सेव हो गई।");
@@ -564,7 +558,6 @@ complaintStatusForm?.addEventListener("submit", async (event) => {
     message(complaintStatusResult, "स्टेटस नहीं मिला: " + error.message, "red");
   }
 });
-
 // ======================================
 // STUDENT SUGGESTIONS
 // ======================================
@@ -676,6 +669,8 @@ async function loadAdminDashboard() {
     renderStudents(students);
     renderSuggestions(suggestions);
 
+    await loadAdminPracticals();
+
   } catch (error) {
     console.error("Dashboard error:", error);
     alert("Dashboard लोड नहीं हुआ: " + error.message);
@@ -720,8 +715,6 @@ function renderStudents(snap) {
         )
       )
     );
-
-    // Admin के लिए Regular / Private चयन
 
     const admissionLabel = element(
       "label",
@@ -786,13 +779,13 @@ function renderStudents(snap) {
         });
 
         alert("विद्यार्थी का प्रवेश प्रकार सेव हो गया।");
-
         await loadAdminDashboard();
 
       } catch (error) {
         alert("प्रवेश प्रकार सेव नहीं हुआ: " + error.message);
         admissionSave.disabled = false;
-        admissionSave.textContent = "प्रवेश प्रकार सेव करें"      }
+        admissionSave.textContent = "प्रवेश प्रकार सेव करें";
+      }
     });
 
     card.append(admissionLabel, admissionSelect, admissionSave);
@@ -858,7 +851,7 @@ async function loadAdminComplaints() {
         element("h4", data.subject || "शिकायत"),
         element("p", "टोकन: " + (data.token || "")),
         element("p", "ईमेल: " + (data.email || "")),
-        element("p", "विवरण: " + (data.description || data.message || "")),
+        element("p", "विवरण: " + (data.details || data.description || "")),
         element("p", "स्थिति: " + (data.status || "Pending"))
       );
 
@@ -975,20 +968,409 @@ adminNoticeForm?.addEventListener("submit", async (event) => {
 });
 
 // ======================================
-// PAGE NAVIGATION
+// PRACTICAL SECTION - PUBLIC
 // ======================================
 
-document.querySelectorAll('a[href^="#"]').forEach((link) => {
-  link.addEventListener("click", () => {
-    const target = document.querySelector(link.getAttribute("href"));
+const practicalList = $("practical-list");
+const practicalSearch = $("practical-search");
 
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth" });
+let practicalRecords = [];
+
+function renderPublicPracticals() {
+  if (!practicalList) return;
+
+  practicalList.replaceChildren();
+
+  const searchText = (practicalSearch?.value || "")
+    .trim()
+    .toLowerCase();
+
+  const filtered = practicalRecords.filter((item) => {
+    const text = [
+      item.course,
+      item.year,
+      item.semester,
+      item.subject,
+      item.title
+    ].join(" ").toLowerCase();
+
+    return text.includes(searchText);
+  });
+
+  if (!filtered.length) {
+    practicalList.append(
+      element("p", "अभी इस खोज के लिए कोई Practical PDF उपलब्ध नहीं है।")
+    );
+    return;
+  }
+
+  const groups = {};
+
+  filtered.forEach((item) => {
+    const key = [
+      item.course || "",
+      item.year || "",
+      item.semester || "",
+      item.subject || ""
+    ].join("|||");
+
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(item);
+  });
+
+  Object.values(groups).forEach((items) => {
+    const first = items[0];
+    const card = element("article", "", "panel practical-card");
+
+    card.append(
+      element("h3", first.course || "कोर्स"),
+      element(
+        "p",
+        "वर्ष: " + (first.year || "-") +
+        " | सेमेस्टर: " + (first.semester || "-")
+      ),
+      element("h4", "विषय: " + (first.subject || "-"))
+    );
+
+    items.forEach((item) => {
+      const link = document.createElement("a");
+      link.href = item.driveUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "📄 " + (item.title || "Practical PDF देखें");
+      link.className = "practical-pdf-link";
+      link.style.cssText = `
+        display:block;
+        margin:10px 0;
+        padding:12px;
+        border-radius:8px;
+        background:#f1f5f9;
+        color:#102544;
+        text-decoration:none;
+        font-weight:bold;
+      `;
+      card.append(link);
+    });
+
+    practicalList.append(card);
+  });
+}
+
+async function loadPublicPracticals() {
+  if (!practicalList) return;
+
+  practicalList.textContent = "प्रैक्टिकल PDF लोड हो रही हैं...";
+
+  try {
+    const snap = await getDocs(collection(db, "practicals"));
+
+    practicalRecords = snap.docs.map((item) => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    practicalRecords.sort((a, b) =>
+      String(a.course || "").localeCompare(String(b.course || ""))
+    );
+
+    renderPublicPracticals();
+
+  } catch (error) {
+    console.error("Practical load error:", error);
+    practicalList.textContent =
+      "प्रैक्टिकल PDF लोड नहीं हो पाईं। कृपया बाद में प्रयास करें।";
+  }
+}
+
+practicalSearch?.addEventListener("input", renderPublicPracticals);
+
+// ======================================
+// PRACTICAL SECTION - ADMIN
+// ======================================
+
+const adminPracticalForm = $("admin-practical-form");
+const adminPracticalList = $("admin-practical-list");
+const adminPracticalMessage = $("admin-practical-message");
+const practicalEditId = $("practical-edit-id");
+const practicalSaveButton = $("practical-save-button");
+const practicalCancelEdit = $("practical-cancel-edit");
+
+function resetPracticalForm() {
+  if (!adminPracticalForm) return;
+
+  adminPracticalForm.reset();
+
+  if (practicalEditId) practicalEditId.value = "";
+  if (practicalSaveButton) practicalSaveButton.textContent = "PDF जोड़ें";
+  if (practicalCancelEdit) practicalCancelEdit.hidden = true;
+}
+
+function renderAdminPracticals() {
+  if (!adminPracticalList) return;
+
+  adminPracticalList.replaceChildren();
+
+  if (!practicalRecords.length) {
+    adminPracticalList.append(
+      element("p", "अभी कोई Practical PDF नहीं जोड़ी गई है।")
+    );
+    return;
+  }
+
+  practicalRecords.forEach((item) => {
+    const card = element("div", "", "panel practical-admin-card");
+
+    card.append(
+      element("h4", item.title || "Practical PDF"),
+      element("p", "कोर्स: " + (item.course || "-")),
+      element("p", "वर्ष: " + (item.year || "-")),
+      element("p", "सेमेस्टर: " + (item.semester || "-")),
+      element("p", "विषय: " + (item.subject || "-"))
+    );
+
+    const pdfLink = document.createElement("a");
+    pdfLink.href = item.driveUrl;
+    pdfLink.target = "_blank";
+    pdfLink.rel = "noopener noreferrer";
+    pdfLink.textContent = "PDF खोलें";
+    card.append(pdfLink);
+
+    const actions = element("div", "", "practical-admin-actions");
+
+    const editButton = element(
+      "button",
+      "बदलें",
+      "btn btn-primary"
+    );
+    editButton.type = "button";
+
+    editButton.addEventListener("click", () => {
+      if (!requireAdmin()) return;
+
+      adminPracticalForm.elements.course.value = item.course || "";
+      adminPracticalForm.elements.year.value = item.year || "";
+      adminPracticalForm.elements.semester.value = item.semester || "";
+      adminPracticalForm.elements.subject.value = item.subject || "";
+      adminPracticalForm.elements.title.value = item.title || "";
+      adminPracticalForm.elements.driveUrl.value = item.driveUrl || "";
+
+      practicalEditId.value = item.id;
+      practicalSaveButton.textContent = "बदलाव सेव करें";
+      practicalCancelEdit.hidden = false;
+
+      adminPracticalForm.scrollIntoView({ behavior: "smooth" });
+    });
+
+    const deleteButton = element(
+      "button",
+      "डिलीट करें",
+      "btn btn-light"
+    );
+    deleteButton.type = "button";
+
+    deleteButton.addEventListener("click", async () => {
+      if (!requireAdmin()) return;
+
+      const confirmDelete = confirm(
+        "क्या आप यह Practical PDF हटाना चाहते हैं?"
+      );
+
+      if (!confirmDelete) return;
+
+      try {
+        deleteButton.disabled = true;
+        deleteButton.textContent = "हटाया जा रहा है...";
+
+        await deleteDoc(doc(db, "practicals", item.id));
+
+        message(
+          adminPracticalMessage,
+          "Practical PDF हटा दी गई।",
+          "green"
+        );
+
+        await loadPublicPracticals();
+        renderAdminPracticals();
+
+      } catch (error) {
+        alert("PDF डिलीट नहीं हुई: " + error.message);
+        deleteButton.disabled = false;
+        deleteButton.textContent = "डिलीट करें";
+      }
+    });
+
+    actions.append(editButton, deleteButton);
+    card.append(actions);
+    adminPracticalList.append(card);
+  });
+}
+
+async function loadAdminPracticals() {
+  if (!requireAdmin()) return;
+
+  try {
+    const snap = await getDocs(collection(db, "practicals"));
+
+    practicalRecords = snap.docs.map((item) => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    practicalRecords.sort((a, b) =>
+      String(a.course || "").localeCompare(String(b.course || ""))
+    );
+
+    renderAdminPracticals();
+    renderPublicPracticals();
+
+  } catch (error) {
+    console.error("Admin practical error:", error);
+
+    if (adminPracticalList) {
+      adminPracticalList.textContent =
+        "Practical सूची लोड नहीं हुई: " + error.message;
+    }
+  }
+}
+
+adminPracticalForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!requireAdmin()) return;
+
+  try {
+    const formData = new FormData(adminPracticalForm);
+
+    const course = String(formData.get("course") || "").trim();
+    const year = String(formData.get("year") || "").trim();
+    const semester = String(formData.get("semester") || "").trim();
+    const subject = String(formData.get("subject") || "").trim();
+    const title = String(formData.get("title") || "").trim();
+    const driveUrl = String(formData.get("driveUrl") || "").trim();
+    const editId = practicalEditId.value.trim();
+
+    if (!course || !year || !semester || !subject || !title || !driveUrl) {
+      message(
+        adminPracticalMessage,
+        "कृपया सभी जानकारी भरें।",
+        "red"
+      );
+      return;
+    }
+
+    let parsedUrl;
+
+    try {
+      parsedUrl = new URL(driveUrl);
+    } catch {
+      message(adminPracticalMessage, "सही PDF लिंक डालें।", "red");
+      return;
+    }
+
+    if (parsedUrl.protocol !== "https:") {
+      message(
+        adminPracticalMessage,
+        "Google Drive का सुरक्षित HTTPS लिंक डालें।",
+        "red"
+      );
+      return;
+    }
+
+    const record = {
+      course,
+      year,
+      semester,
+      subject,
+      title,
+      driveUrl,
+      updatedAt: serverTimestamp()
+    };
+
+    practicalSaveButton.disabled = true;
+    practicalSaveButton.textContent = "सेव हो रहा है...";
+
+    if (editId) {
+      await updateDoc(doc(db, "practicals", editId), record);
+    } else {
+      await addDoc(collection(db, "practicals"), {
+        ...record,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    message(
+      adminPracticalMessage,
+      editId
+        ? "Practical PDF का बदलाव सेव हो गया।"
+        : "नई Practical PDF जोड़ दी गई।",
+      "green"
+    );
+
+    resetPracticalForm();
+
+    await loadPublicPracticals();
+    await loadAdminPracticals();
+
+  } catch (error) {
+    message(
+      adminPracticalMessage,
+      "जानकारी सेव नहीं हुई: " + error.message,
+      "red"
+    );
+  } finally {
+    if (practicalSaveButton) {
+      practicalSaveButton.disabled = false;
+
+      if (!practicalEditId.value) {
+        practicalSaveButton.textContent = "PDF जोड़ें";
+      }
+    }
+  }
+});
+
+practicalCancelEdit?.addEventListener("click", () => {
+  resetPracticalForm();
+  message(adminPracticalMessage, "बदलाव रद्द कर दिया गया।");
+});
+
+// ======================================
+// LOAD PUBLIC PRACTICALS WITHOUT LOGIN
+// ======================================
+
+loadPublicPracticals();
+
+// ===============================
+// PAGE NAVIGATION
+// ===============================
+
+document.querySelectorAll(".nav-links a").forEach(link => {
+  link.addEventListener("click", function (e) {
+    const target = this.getAttribute("href");
+
+    if (target && target.startsWith("#")) {
+      e.preventDefault();
+
+      document.querySelectorAll("section").forEach(section => {
+        section.style.display = "none";
+      });
+
+      const page = document.querySelector(target);
+
+      if (page) {
+        page.style.display = "block";
+        page.scrollIntoView({ behavior: "smooth" });
+      }
+
+      document.querySelectorAll(".nav-links a").forEach(a => {
+        a.classList.remove("active");
+      });
+
+      this.classList.add("active");
     }
   });
 });
 
-// ======================================
+//======================================
 // TEAM RKG APP READY
 // ======================================
 
